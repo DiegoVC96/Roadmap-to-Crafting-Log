@@ -21,8 +21,8 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
-            onPress={() => router.push('/crafting-log')}>
-            <Text style={styles.primaryButtonText}>Abrir Crafting Log</Text>
+            onPress={() => router.push('/auth')}>
+            <Text style={styles.primaryButtonText}>Acceder a mi cuenta</Text>
           </Pressable>
 
           <View style={styles.statusCard}>

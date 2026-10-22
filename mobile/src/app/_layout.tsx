@@ -13,6 +13,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: '#0b121c' },
         }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ title: 'Acceso seguro' }} />
         <Stack.Screen name="crafting-log" options={{ title: 'Crafting Log' }} />
       </Stack>
     </>
