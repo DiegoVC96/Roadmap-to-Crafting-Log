@@ -1,0 +1,19 @@
+{
+  "name": "Roadmap to Crafting Log",
+  "short_name": "Crafting Log",
+  "description": "Planifica y completa el crafting log de Final Fantasy XIV.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b1620",
+  "theme_color": "#152638",
+  "icons": [
+    {
+      "src": "/roadmap-logo.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
