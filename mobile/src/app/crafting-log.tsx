@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -80,6 +81,7 @@ export default function CraftingLogScreen() {
         </ScrollView>
         <TextInput value={search} onChangeText={setSearch} placeholder="Buscar receta..." placeholderTextColor="#758598" style={styles.search} />
         {syncError && <Text style={styles.syncError}>{syncError}</Text>}
+        <Pressable onPress={() => router.push('/materials')} style={styles.materialsButton}><Text style={styles.materialsButtonText}>Ver materiales pendientes</Text></Pressable>
         <Text style={styles.resultCount}>{filteredRecipes.length} recetas</Text>
       </View>}
       renderItem={({ item }) => <RecipeCard recipe={item} completed={completedIds.includes(item.id)} onToggle={() => void toggleRecipe(item.id)} />}
@@ -101,6 +103,7 @@ const styles = StyleSheet.create({
   listContent: { backgroundColor: '#0b121c', padding: 18, paddingBottom: 32 }, title: { color: '#f7d985', fontSize: 29, fontWeight: '800' }, progress: { color: '#cbd5df', fontSize: 14, marginTop: 8 }, progressTrack: { backgroundColor: '#263747', borderRadius: 8, height: 8, marginTop: 10, overflow: 'hidden' }, progressValue: { backgroundColor: '#d7ad4d', height: '100%' },
   crafterTabs: { gap: 8, paddingVertical: 21 }, crafterTab: { backgroundColor: '#132131', borderColor: '#31465b', borderRadius: 99, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9 }, crafterTabActive: { backgroundColor: '#523d16', borderColor: '#d8af50' }, crafterText: { color: '#b4c0cd', fontSize: 13, fontWeight: '700' }, crafterTextActive: { color: '#f7d985' },
   search: { backgroundColor: '#132131', borderColor: '#31465b', borderRadius: 12, borderWidth: 1, color: '#f4f7fb', fontSize: 16, paddingHorizontal: 14, paddingVertical: 13 }, resultCount: { color: '#8998a9', fontSize: 13, marginBottom: 10, marginTop: 15 }, syncError: { color: '#ffbec5', fontSize: 13, marginTop: 12 },
+  materialsButton: { alignItems: 'center', borderColor: '#d8af50', borderRadius: 12, borderWidth: 1, marginTop: 14, paddingVertical: 13 }, materialsButtonText: { color: '#f0d27a', fontSize: 14, fontWeight: '800' },
   recipeCard: { alignItems: 'center', backgroundColor: '#132131', borderColor: '#2c4054', borderRadius: 14, borderWidth: 1, flexDirection: 'row', marginBottom: 10, padding: 12 }, recipeCompleted: { backgroundColor: '#152a25', borderColor: '#42725a' }, icon: { height: 42, width: 42 }, iconFallback: { backgroundColor: '#324456', borderRadius: 8, height: 42, width: 42 }, recipeContent: { flex: 1, marginHorizontal: 12 }, recipeName: { color: '#f0f4f8', fontSize: 15, fontWeight: '800' }, recipeNameCompleted: { color: '#b7dfbe', textDecorationLine: 'line-through' }, recipeLevel: { color: '#9eabb9', fontSize: 12, marginTop: 5 }, check: { alignItems: 'center', borderColor: '#6c7a89', borderRadius: 15, borderWidth: 2, height: 30, justifyContent: 'center', width: 30 }, checkCompleted: { backgroundColor: '#4f986b', borderColor: '#4f986b' }, checkText: { color: '#fff', fontSize: 19, fontWeight: '900' },
   error: { color: '#ffbec5', fontSize: 15, lineHeight: 22, textAlign: 'center' }, retry: { backgroundColor: '#c99d39', borderRadius: 12, marginTop: 20, paddingHorizontal: 20, paddingVertical: 13 }, retryText: { color: '#171109', fontWeight: '800' }, empty: { color: '#aab7c6', marginTop: 22, textAlign: 'center' },
 });

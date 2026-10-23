@@ -15,6 +15,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ title: 'Acceso seguro' }} />
         <Stack.Screen name="crafting-log" options={{ title: 'Crafting Log' }} />
+        <Stack.Screen name="materials" options={{ title: 'Materiales pendientes' }} />
       </Stack>
     </>
   );
