@@ -1313,6 +1313,41 @@ button:focus-visible {
     0 0 0 1px rgba(231, 184, 90, 0.35);
 }
 
+.material-roadmap-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  margin: 0 0 18px;
+}
+
+.material-status-filters {
+  flex-wrap: wrap;
+}
+
+.material-sort-control {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #bfc7d4;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.material-sort-control select {
+  padding: 9px 10px;
+  border: 1px solid #536f87;
+  border-radius: 8px;
+  color: #eff6ff;
+  background: rgba(7, 15, 23, 0.76);
+  font: inherit;
+}
+
+.material-sort-control select:focus {
+  border-color: #e7b85a;
+  outline: 3px solid rgba(231, 184, 90, 0.18);
+}
+
 .app-logo {
   display: block;
   width: clamp(76px, 14vw, 118px);
@@ -1369,6 +1404,15 @@ button:focus-visible {
 
   .material-collection-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .material-roadmap-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .material-sort-control {
+    justify-content: space-between;
   }
 
   .recipe-search,

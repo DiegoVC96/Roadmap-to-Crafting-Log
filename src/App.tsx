@@ -89,6 +89,12 @@ function App() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [searchText, setSearchText] = useState('')
   const [materialSearchText, setMaterialSearchText] = useState('')
+  const [materialStatusFilter, setMaterialStatusFilter] = useState<
+    'all' | 'missing' | 'collected'
+  >('all')
+  const [materialSort, setMaterialSort] = useState<'remaining' | 'name'>(
+    'remaining',
+  )
   const [recipeFilter, setRecipeFilter] = useState<
     'all' | 'pending' | 'completed'
   >('all')
@@ -182,11 +188,48 @@ const materialCollectionSummary = useMemo(() => {
   }
 }, [inventoryByItemId, materialTotals])
 
-const visibleMaterialTotals = materialTotals.filter((material) =>
-  material.name
-    .toLocaleLowerCase()
-    .includes(materialSearchText.trim().toLocaleLowerCase()),
-)
+const visibleMaterialTotals = useMemo(() => {
+  const normalizedSearch = materialSearchText.trim().toLocaleLowerCase()
+
+  return materialTotals
+    .filter((material) => {
+      const ownedQuantity = inventoryByItemId[String(material.itemId)] ?? 0
+      const remainingQuantity = Math.max(material.quantity - ownedQuantity, 0)
+      const matchesStatus =
+        materialStatusFilter === 'all' ||
+        (materialStatusFilter === 'missing' && remainingQuantity > 0) ||
+        (materialStatusFilter === 'collected' && remainingQuantity === 0)
+
+      return (
+        matchesStatus &&
+        material.name.toLocaleLowerCase().includes(normalizedSearch)
+      )
+    })
+    .sort((first, second) => {
+      if (materialSort === 'name') {
+        return first.name.localeCompare(second.name)
+      }
+
+      const firstRemaining = Math.max(
+        first.quantity - (inventoryByItemId[String(first.itemId)] ?? 0),
+        0,
+      )
+      const secondRemaining = Math.max(
+        second.quantity - (inventoryByItemId[String(second.itemId)] ?? 0),
+        0,
+      )
+
+      return (
+        secondRemaining - firstRemaining || first.name.localeCompare(second.name)
+      )
+    })
+}, [
+  inventoryByItemId,
+  materialSearchText,
+  materialSort,
+  materialStatusFilter,
+  materialTotals,
+])
 
 function getCompletedCount(crafter: Crafter) {
   return recipes.filter(
@@ -788,9 +831,48 @@ if (isMaterialsRoadmapOpen) {
           aria-label="Buscar material pendiente"
         />
 
+        <div className="material-roadmap-controls">
+          <div className="filter-buttons material-status-filters" aria-label="Filtrar materiales">
+            <button
+              className={materialStatusFilter === 'all' ? 'active' : ''}
+              type="button"
+              onClick={() => setMaterialStatusFilter('all')}
+            >
+              Todos
+            </button>
+            <button
+              className={materialStatusFilter === 'missing' ? 'active' : ''}
+              type="button"
+              onClick={() => setMaterialStatusFilter('missing')}
+            >
+              Por conseguir
+            </button>
+            <button
+              className={materialStatusFilter === 'collected' ? 'active' : ''}
+              type="button"
+              onClick={() => setMaterialStatusFilter('collected')}
+            >
+              Completos
+            </button>
+          </div>
+
+          <label className="material-sort-control">
+            Ordenar por
+            <select
+              value={materialSort}
+              onChange={(event) =>
+                setMaterialSort(event.target.value as 'remaining' | 'name')
+              }
+            >
+              <option value="remaining">Mayor cantidad pendiente</option>
+              <option value="name">Nombre: A a Z</option>
+            </select>
+          </label>
+        </div>
+
         {visibleMaterialTotals.length === 0 && (
           <p className="empty-state">
-            No encontramos materiales que coincidan con “{materialSearchText}”.
+            No encontramos materiales con estos filtros.
           </p>
         )}
 
