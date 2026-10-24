@@ -90,6 +90,51 @@ h1 {
   color: #bfc7d4;
 }
 
+.next-crafting-goal {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  align-items: center;
+  margin: 20px 0;
+  padding: 20px 22px;
+  border: 1px solid rgba(231, 184, 90, 0.62);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at right center, rgba(209, 157, 53, 0.16), transparent 34%),
+    rgba(29, 37, 42, 0.86);
+}
+
+.next-crafting-goal h2 {
+  margin: 3px 0 7px;
+  color: #f7d98d;
+  font-family: Georgia, serif;
+  font-size: 1.38rem;
+}
+
+.next-crafting-goal p:not(.section-label) {
+  max-width: 650px;
+  margin: 0;
+  color: #c2ccd5;
+}
+
+.next-crafting-goal button {
+  flex: 0 0 auto;
+  padding: 11px 14px;
+  border: 1px solid #e7b85a;
+  border-radius: 9px;
+  color: #1b160b;
+  background: linear-gradient(135deg, #f0c968, #d69e3e);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 202, 0.35);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.next-crafting-goal button:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #f8dc8f, #e7ae49);
+}
+
 .progress-track {
   height: 14px;
   overflow: hidden;
@@ -190,6 +235,16 @@ h1 {
   .overall-progress,
   .crafting-grid {
     grid-template-columns: 1fr;
+  }
+
+  .next-crafting-goal {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .next-crafting-goal button {
+    width: 100%;
+    min-height: 42px;
   }
 }
 

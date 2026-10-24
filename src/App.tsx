@@ -127,6 +127,34 @@ function App() {
       ? 0
       : Math.round((completedRecipes.length / totalRecipes) * 100)
 
+  const nextCraftingGoal = useMemo(() => {
+    return crafters
+      .map((crafter) => {
+        const total = recipes.filter(
+          (recipe) => recipe.crafter === crafter.id,
+        ).length
+        const completed = completedRecipeIds.filter((recipeId) =>
+          recipes.some(
+            (recipe) => recipe.id === recipeId && recipe.crafter === crafter.id,
+          ),
+        ).length
+
+        return {
+          crafter,
+          total,
+          completed,
+          remaining: total - completed,
+          percentage: total === 0 ? 0 : Math.round((completed / total) * 100),
+        }
+      })
+      .filter((goal) => goal.total > 0 && goal.remaining > 0)
+      .sort(
+        (first, second) =>
+          second.percentage - first.percentage ||
+          first.remaining - second.remaining,
+      )[0]
+  }, [completedRecipeIds, recipes])
+
   const selectedRecipes = recipes.filter(
   (recipe) => recipe.crafter === selectedCrafterId,
 )
@@ -245,6 +273,23 @@ function toggleRecipe(recipeId: string) {
       ? currentIds.filter((id) => id !== recipeId)
       : [...currentIds, recipeId],
   )
+}
+
+function openNextCraftingGoal() {
+  if (!nextCraftingGoal) {
+    return
+  }
+
+  setSelectedCrafterId(nextCraftingGoal.crafter.id)
+  setSearchText('')
+  setLevelFilter('all')
+  setRecipeFilter('pending')
+  window.requestAnimationFrame(() => {
+    document.getElementById('crafting-log')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  })
 }
 
 function resetProgress() {
@@ -1028,6 +1073,22 @@ if (isMaterialsRoadmapOpen) {
         </div>
       </section>
 
+      {nextCraftingGoal && (
+        <section className="next-crafting-goal" aria-label="Siguiente objetivo sugerido">
+          <div>
+            <p className="section-label">SIGUIENTE OBJETIVO</p>
+            <h2>Completa {nextCraftingGoal.crafter.id}</h2>
+            <p>
+              Vas por {nextCraftingGoal.completed} de {nextCraftingGoal.total} recetas.
+              Solo faltan {nextCraftingGoal.remaining} para terminar esta profesión.
+            </p>
+          </div>
+          <button type="button" onClick={openNextCraftingGoal}>
+            Ver recetas pendientes →
+          </button>
+        </section>
+      )}
+
       <section className="crafting-grid" aria-label="Profesiones de crafting">
         {crafters.map((crafter) => {
           const totalForCrafter = recipes.filter(
@@ -1073,7 +1134,7 @@ if (isMaterialsRoadmapOpen) {
         })}
       </section>
 
-      <section className="recipe-panel">
+      <section className="recipe-panel" id="crafting-log">
         <div className="recipe-panel-heading">
           <span className="crafter-icon"><img className="crafter-job-icon" src={selectedCrafter.icon} alt="" /></span>
           <div>
