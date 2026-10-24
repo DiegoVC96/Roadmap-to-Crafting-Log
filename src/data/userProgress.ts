@@ -51,11 +51,26 @@ function readMarketScope(value: unknown): MarketScope | null {
     : null
 }
 
+function readFreeTrialStorage(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([itemId, location]) =>
+        /^\d+$/.test(itemId) &&
+        (location === 'inventory' || location === 'saddlebag'),
+    ),
+  ) as Record<string, 'inventory' | 'saddlebag'>
+}
+
 export type UserProgress = {
   completedRecipeIds: string[]
   inventoryByItemId: Record<string, number>
   farmingSessionItemIds: number[]
   marketScope: MarketScope | null
+  freeTrialStorageByItemId: Record<string, 'inventory' | 'saddlebag'>
 }
 
 export async function loadUserProgress(userId: string) {
@@ -67,6 +82,7 @@ export async function loadUserProgress(userId: string) {
       inventoryByItemId: {},
       farmingSessionItemIds: [],
       marketScope: null,
+      freeTrialStorageByItemId: {},
     }
   }
 
@@ -77,6 +93,7 @@ export async function loadUserProgress(userId: string) {
     inventoryByItemId: readInventory(data.inventoryByItemId),
     farmingSessionItemIds: readItemIds(data.farmingSessionItemIds),
     marketScope: readMarketScope(data.marketScope),
+    freeTrialStorageByItemId: readFreeTrialStorage(data.freeTrialStorageByItemId),
   }
 }
 
@@ -88,6 +105,7 @@ export async function saveUserProgress(userId: string, progress: UserProgress) {
       inventoryByItemId: progress.inventoryByItemId,
       farmingSessionItemIds: progress.farmingSessionItemIds,
       marketScope: progress.marketScope,
+      freeTrialStorageByItemId: progress.freeTrialStorageByItemId,
       updatedAt: serverTimestamp(),
     },
     { merge: true },

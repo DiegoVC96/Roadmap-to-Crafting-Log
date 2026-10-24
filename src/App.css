@@ -1298,6 +1298,207 @@ h1 {
   white-space: nowrap;
 }
 
+.free-trial-page {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid #94763f;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(177, 135, 59, 0.15), transparent 34%),
+    rgba(38, 29, 18, 0.92);
+}
+
+.free-trial-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin: 20px 0 8px;
+}
+
+.free-trial-heading h2 {
+  margin: 2px 0 0;
+  color: #ffe09a;
+  font-family: Georgia, serif;
+  font-size: 1.6rem;
+}
+
+.free-trial-heading > strong {
+  color: #fde0a0;
+  text-align: right;
+}
+
+.free-trial-description {
+  margin: 0 0 18px;
+  color: #ded0b4;
+  line-height: 1.55;
+}
+
+.free-trial-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.free-trial-summary article {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid rgba(183, 145, 76, 0.54);
+  border-radius: 10px;
+  background: rgba(64, 47, 24, 0.52);
+}
+
+.free-trial-summary span,
+.free-trial-summary small {
+  color: #dbcba9;
+  font-size: 0.82rem;
+}
+
+.free-trial-summary strong {
+  color: #fff0be;
+  font-size: 1.24rem;
+}
+
+.free-trial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+.free-trial-suggest-button,
+.free-trial-clear-button {
+  padding: 9px 12px;
+  border: 1px solid rgba(224, 186, 109, 0.72);
+  border-radius: 8px;
+  color: #fff0c9;
+  background: rgba(119, 83, 36, 0.74);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.87rem;
+}
+
+.free-trial-suggest-button:hover,
+.free-trial-clear-button:hover:not(:disabled) {
+  border-color: #ffe0a0;
+  background: rgba(151, 106, 43, 0.9);
+}
+
+.free-trial-clear-button {
+  border-color: rgba(196, 143, 116, 0.68);
+  color: #f7d9c8;
+  background: rgba(103, 55, 42, 0.68);
+}
+
+.free-trial-clear-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.free-trial-search {
+  display: grid;
+  gap: 5px;
+  min-width: min(100%, 220px);
+  margin-left: auto;
+  color: #eadab8;
+  font-size: 0.82rem;
+}
+
+.free-trial-search input {
+  padding: 9px 10px;
+  border: 1px solid rgba(203, 165, 90, 0.68);
+  border-radius: 8px;
+  color: #fff3d7;
+  background: rgba(23, 17, 10, 0.7);
+  font: inherit;
+}
+
+.free-trial-message {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border: 1px solid rgba(228, 189, 107, 0.52);
+  border-radius: 9px;
+  color: #ffe5a8;
+  background: rgba(99, 70, 29, 0.42);
+}
+
+.free-trial-list {
+  display: grid;
+  gap: 9px;
+}
+
+.free-trial-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(148, 119, 70, 0.58);
+  border-radius: 10px;
+  background: rgba(38, 29, 16, 0.6);
+}
+
+.free-trial-material-name h3 {
+  margin: 0 0 4px;
+  color: #fff2d0;
+  font-size: 1rem;
+}
+
+.free-trial-material-name p {
+  margin: 0;
+  color: #d8c8a7;
+  font-size: 0.85rem;
+}
+
+.free-trial-location {
+  min-width: 92px;
+  padding: 5px 8px;
+  border: 1px solid rgba(181, 145, 77, 0.62);
+  border-radius: 999px;
+  color: #fbe1a4;
+  background: rgba(91, 65, 29, 0.5);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.free-trial-location.inventory {
+  border-color: rgba(101, 170, 143, 0.72);
+  color: #d7f3db;
+  background: rgba(35, 89, 66, 0.52);
+}
+
+.free-trial-location.saddlebag {
+  border-color: rgba(130, 151, 207, 0.74);
+  color: #dae7ff;
+  background: rgba(48, 62, 109, 0.55);
+}
+
+.free-trial-material-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.free-trial-material-actions button {
+  padding: 7px 8px;
+  border: 1px solid rgba(183, 145, 76, 0.5);
+  border-radius: 7px;
+  color: #e9dabb;
+  background: rgba(68, 49, 24, 0.78);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.77rem;
+}
+
+.free-trial-material-actions button:hover,
+.free-trial-material-actions button.active {
+  border-color: #ffe0a0;
+  color: #fff6dd;
+  background: rgba(145, 101, 39, 0.8);
+}
+
 .materials-roadmap-description {
   margin: 12px 0 18px;
   color: #bfc7d4;
@@ -1432,7 +1633,8 @@ button:focus-visible {
 }
 
 .load-button,
-.materials-roadmap-button {
+.materials-roadmap-button,
+.free-trial-button {
   overflow: hidden;
   border: 1px solid rgba(255, 225, 149, 0.72);
   border-radius: 10px;
@@ -1456,8 +1658,17 @@ button:focus-visible {
   background: linear-gradient(135deg, #395f84, #213d5b);
 }
 
+.free-trial-button {
+  display: block;
+  margin-top: 10px;
+  padding: 10px 15px;
+  color: #fff0cf;
+  background: linear-gradient(135deg, #806333, #4f3920);
+}
+
 .load-button::before,
-.materials-roadmap-button::before {
+.materials-roadmap-button::before,
+.free-trial-button::before {
   margin-right: 8px;
   color: currentColor;
 }
@@ -1470,8 +1681,13 @@ button:focus-visible {
   content: "◈";
 }
 
+.free-trial-button::before {
+  content: "✦";
+}
+
 .load-button:hover:not(:disabled),
-.materials-roadmap-button:hover:not(:disabled) {
+.materials-roadmap-button:hover:not(:disabled),
+.free-trial-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
@@ -1479,7 +1695,8 @@ button:focus-visible {
 }
 
 .load-button:active:not(:disabled),
-.materials-roadmap-button:active:not(:disabled) {
+.materials-roadmap-button:active:not(:disabled),
+.free-trial-button:active:not(:disabled) {
   transform: translateY(0);
 }
 
@@ -2152,6 +2369,7 @@ button:focus-visible {
   .hero .load-button,
   .hero .reset-button,
   .hero .materials-roadmap-button,
+  .hero .free-trial-button,
   .hero .crafting-tree-button {
     width: min(100%, 360px);
     min-height: 44px;
@@ -2197,7 +2415,8 @@ button:focus-visible {
   }
 
   .recipe-cost-page,
-  .smart-plan-page {
+  .smart-plan-page,
+  .free-trial-page {
     padding: 18px;
   }
 
@@ -2208,6 +2427,38 @@ button:focus-visible {
 
   .vendor-shopping-heading > strong {
     text-align: left;
+  }
+
+  .free-trial-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .free-trial-heading > strong {
+    text-align: left;
+  }
+
+  .free-trial-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .free-trial-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .free-trial-search {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .free-trial-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .free-trial-location,
+  .free-trial-material-actions {
+    grid-column: 2;
   }
 
   .market-board-settings {

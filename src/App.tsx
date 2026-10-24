@@ -66,6 +66,8 @@ type SmartPlanItem = {
   marketPrice: number | null
 }
 
+type FreeTrialStorageLocation = 'inventory' | 'saddlebag'
+
 function collectBaseMaterials(
   node: CraftingTreeNode,
   materials = new Map<number, AcquisitionMaterial>(),
@@ -263,6 +265,12 @@ function App() {
   >('all')
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
+  const [isFreeTrialStorageOpen, setIsFreeTrialStorageOpen] = useState(false)
+  const [freeTrialSearchText, setFreeTrialSearchText] = useState('')
+  const [freeTrialStorageByItemId, setFreeTrialStorageByItemId] = useState<
+    Record<string, FreeTrialStorageLocation>
+  >({})
+  const [freeTrialStorageMessage, setFreeTrialStorageMessage] = useState<string | null>(null)
   const [isVendorShoppingOpen, setIsVendorShoppingOpen] = useState(false)
   const [vendorShoppingItems, setVendorShoppingItems] = useState<
     VendorShoppingItem[]
@@ -471,6 +479,60 @@ const materialCollectionSummary = useMemo(() => {
   }
 }, [inventoryByItemId, materialTotals])
 
+const freeTrialMaterials = useMemo(
+  () =>
+    materialTotals
+      .map((material) => {
+        const ownedQuantity = inventoryByItemId[String(material.itemId)] ?? 0
+        const remainingQuantity = Math.max(material.quantity - ownedQuantity, 0)
+
+        return {
+          ...material,
+          ownedQuantity,
+          remainingQuantity,
+          location: freeTrialStorageByItemId[String(material.itemId)] ?? null,
+          isSessionItem: farmingSessionItemIds.includes(material.itemId),
+        }
+      })
+      .filter((material) => material.remainingQuantity > 0)
+      .sort(
+        (first, second) =>
+          Number(second.isSessionItem) - Number(first.isSessionItem) ||
+          Number(second.ownedQuantity > 0) - Number(first.ownedQuantity > 0) ||
+          second.remainingQuantity - first.remainingQuantity ||
+          first.name.localeCompare(second.name),
+      ),
+  [
+    farmingSessionItemIds,
+    freeTrialStorageByItemId,
+    inventoryByItemId,
+    materialTotals,
+  ],
+)
+
+const freeTrialStorageSummary = useMemo(() => {
+  const inventory = freeTrialMaterials.filter(
+    (material) => material.location === 'inventory',
+  ).length
+  const saddlebag = freeTrialMaterials.filter(
+    (material) => material.location === 'saddlebag',
+  ).length
+
+  return {
+    inventory,
+    saddlebag,
+    unassigned: freeTrialMaterials.length - inventory - saddlebag,
+  }
+}, [freeTrialMaterials])
+
+const visibleFreeTrialMaterials = useMemo(() => {
+  const search = freeTrialSearchText.trim().toLocaleLowerCase()
+
+  return freeTrialMaterials.filter((material) =>
+    material.name.toLocaleLowerCase().includes(search),
+  )
+}, [freeTrialMaterials, freeTrialSearchText])
+
 const visibleMaterialTotals = useMemo(() => {
   const normalizedSearch = materialSearchText.trim().toLocaleLowerCase()
 
@@ -590,6 +652,66 @@ function toggleFarmingSession(itemId: number) {
   )
 }
 
+function assignFreeTrialStorage(
+  itemId: number,
+  location: FreeTrialStorageLocation,
+) {
+  const itemKey = String(itemId)
+  const currentLocation = freeTrialStorageByItemId[itemKey]
+
+  if (currentLocation === location) {
+    setFreeTrialStorageByItemId((current) => {
+      const next = { ...current }
+      delete next[itemKey]
+      return next
+    })
+    setFreeTrialStorageMessage('Material quitado de la distribución.')
+    return
+  }
+
+  const usedSlots = Object.entries(freeTrialStorageByItemId).filter(
+    ([savedItemId, savedLocation]) =>
+      savedItemId !== itemKey && savedLocation === location,
+  ).length
+  const limit = location === 'inventory' ? 140 : 70
+
+  if (usedSlots >= limit) {
+    setFreeTrialStorageMessage(
+      location === 'inventory'
+        ? 'Tus 140 espacios de inventario ya están asignados.'
+        : 'Tus 70 espacios de alforja ya están asignados.',
+    )
+    return
+  }
+
+  setFreeTrialStorageByItemId((current) => ({
+    ...current,
+    [itemKey]: location,
+  }))
+  setFreeTrialStorageMessage(
+    location === 'inventory'
+      ? 'Material reservado para el inventario.'
+      : 'Material reservado para la alforja de chocobo.',
+  )
+}
+
+function applyFreeTrialSuggestion() {
+  const suggestion: Record<string, FreeTrialStorageLocation> = {}
+
+  freeTrialMaterials.forEach((material, index) => {
+    if (index < 140) {
+      suggestion[String(material.itemId)] = 'inventory'
+    } else if (index < 210) {
+      suggestion[String(material.itemId)] = 'saddlebag'
+    }
+  })
+
+  setFreeTrialStorageByItemId(suggestion)
+  setFreeTrialStorageMessage(
+    'Distribución sugerida aplicada: primero materiales de tu sesión, después materiales que ya tienes y los de mayor cantidad pendiente.',
+  )
+}
+
 function downloadMaterialList() {
   const escapeCsvValue = (value: string | number) =>
     `"${String(value).replaceAll('"', '""')}"`
@@ -630,6 +752,7 @@ function downloadProgressBackup() {
     inventoryByItemId,
     farmingSessionItemIds,
     marketScope,
+    freeTrialStorageByItemId,
   }
   const file = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',
@@ -689,6 +812,18 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
             itemId > 0,
         )
       : []
+    const restoredFreeTrialStorage =
+      data.freeTrialStorageByItemId &&
+      typeof data.freeTrialStorageByItemId === 'object' &&
+      !Array.isArray(data.freeTrialStorageByItemId)
+        ? Object.fromEntries(
+            Object.entries(data.freeTrialStorageByItemId).filter(
+              ([itemId, location]) =>
+                /^\d+$/.test(itemId) &&
+                (location === 'inventory' || location === 'saddlebag'),
+            ),
+          ) as Record<string, FreeTrialStorageLocation>
+        : {}
     const shouldRestore = window.confirm(
       '¿Quieres reemplazar tu progreso e inventario actuales con este respaldo?',
     )
@@ -700,6 +835,7 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
     setCompletedRecipeIds(restoredRecipeIds)
     setInventoryByItemId(restoredInventory)
     setFarmingSessionItemIds(restoredFarmingSessionItemIds)
+    setFreeTrialStorageByItemId(restoredFreeTrialStorage)
     const restoredMarketScope = readMarketScope(data.marketScope)
     setMarketScope(restoredMarketScope)
     if (restoredMarketScope) {
@@ -1086,6 +1222,7 @@ useEffect(() => {
         setInventoryByItemId(savedProgress.inventoryByItemId)
         setFarmingSessionItemIds(savedProgress.farmingSessionItemIds)
         setMarketScope(savedProgress.marketScope)
+        setFreeTrialStorageByItemId(savedProgress.freeTrialStorageByItemId)
         setMarketScopeType(savedProgress.marketScope?.type ?? 'world')
       }
     } catch {
@@ -1125,6 +1262,7 @@ useEffect(() => {
       inventoryByItemId,
       farmingSessionItemIds,
       marketScope,
+      freeTrialStorageByItemId,
     }).catch(() => {
       setProgressSyncError(
         'No pudimos guardar el último cambio. Revisa tu conexión e inténtalo nuevamente.',
@@ -1138,6 +1276,7 @@ useEffect(() => {
   inventoryByItemId,
   farmingSessionItemIds,
   marketScope,
+  freeTrialStorageByItemId,
   currentUser?.uid,
   loadedProgressUserId,
   accessState.status,
@@ -1944,6 +2083,139 @@ useEffect(() => {
     )
   }
 
+if (isFreeTrialStorageOpen) {
+  return (
+    <main className="app">
+      <header className="hero">
+        <p className="eyebrow">FINAL FANTASY XIV · FREE TRIAL</p>
+        <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
+        <h1>Mochila Free Trial</h1>
+        <p className="subtitle">
+          Planifica dónde guardar materiales sin superar tus 140 espacios de inventario y 70 de alforja.
+        </p>
+        <AccountActions user={currentUser} />
+      </header>
+
+      <section className="free-trial-page">
+        <button
+          className="back-to-materials-button"
+          type="button"
+          onClick={() => setIsFreeTrialStorageOpen(false)}
+        >
+          ← Volver al crafting log
+        </button>
+
+        <div className="free-trial-heading">
+          <div>
+            <p className="section-label">GESTOR DE ALMACENAMIENTO</p>
+            <h2>Materiales que conviene guardar</h2>
+          </div>
+          <strong>{freeTrialMaterials.length.toLocaleString()} tipos pendientes</strong>
+        </div>
+
+        <p className="free-trial-description">
+          Cada tipo de material reservado cuenta como un espacio de pila. La app prioriza lo que tienes en tu sesión de farmeo, lo que ya posees y luego las cantidades más grandes. Los materiales no asignados se recomiendan conseguirlos sólo cuando los vayas a usar.
+        </p>
+
+        <div className="free-trial-summary">
+          <article>
+            <span>Inventario</span>
+            <strong>{freeTrialStorageSummary.inventory} / 140</strong>
+            <small>{140 - freeTrialStorageSummary.inventory} espacios libres</small>
+          </article>
+          <article>
+            <span>Alforja de chocobo</span>
+            <strong>{freeTrialStorageSummary.saddlebag} / 70</strong>
+            <small>{70 - freeTrialStorageSummary.saddlebag} espacios libres</small>
+          </article>
+          <article>
+            <span>Conseguir al momento</span>
+            <strong>{freeTrialStorageSummary.unassigned}</strong>
+            <small>tipos sin reservar</small>
+          </article>
+        </div>
+
+        <div className="free-trial-actions">
+          <button className="free-trial-suggest-button" type="button" onClick={applyFreeTrialSuggestion}>
+            Aplicar distribución sugerida
+          </button>
+          <button
+            className="free-trial-clear-button"
+            type="button"
+            onClick={() => {
+              setFreeTrialStorageByItemId({})
+              setFreeTrialStorageMessage('Distribución borrada. Puedes organizarla nuevamente.')
+            }}
+            disabled={freeTrialStorageSummary.inventory + freeTrialStorageSummary.saddlebag === 0}
+          >
+            Limpiar distribución
+          </button>
+          <label className="free-trial-search">
+            Buscar material
+            <input
+              type="search"
+              value={freeTrialSearchText}
+              onChange={(event) => setFreeTrialSearchText(event.target.value)}
+              placeholder="Ej.: Copper Ore"
+            />
+          </label>
+        </div>
+
+        {freeTrialStorageMessage && <p className="free-trial-message">{freeTrialStorageMessage}</p>}
+
+        <div className="free-trial-list">
+          {visibleFreeTrialMaterials.map((material) => {
+            const locationLabel =
+              material.location === 'inventory'
+                ? 'Inventario'
+                : material.location === 'saddlebag'
+                  ? 'Alforja'
+                  : 'Al conseguirlo'
+
+            return (
+              <article key={material.itemId}>
+                {material.iconPath && (
+                  <img className="game-icon" src={getIconUrl(material.iconPath)} alt="" />
+                )}
+                <div className="free-trial-material-name">
+                  <h3>{material.name}</h3>
+                  <p>
+                    Faltan ×{material.remainingQuantity.toLocaleString()}
+                    {material.ownedQuantity > 0 && ` · Tienes ×${material.ownedQuantity.toLocaleString()}`}
+                    {material.isSessionItem && ' · En sesión de farmeo'}
+                  </p>
+                </div>
+                <span className={`free-trial-location ${material.location ?? 'on-demand'}`}>
+                  {locationLabel}
+                </span>
+                <div className="free-trial-material-actions">
+                  <button
+                    className={material.location === 'inventory' ? 'active' : ''}
+                    type="button"
+                    onClick={() => assignFreeTrialStorage(material.itemId, 'inventory')}
+                  >
+                    Inventario
+                  </button>
+                  <button
+                    className={material.location === 'saddlebag' ? 'active' : ''}
+                    type="button"
+                    onClick={() => assignFreeTrialStorage(material.itemId, 'saddlebag')}
+                  >
+                    Alforja
+                  </button>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+        {visibleFreeTrialMaterials.length === 0 && (
+          <p className="empty-state">No encontramos materiales pendientes con esa búsqueda.</p>
+        )}
+      </section>
+    </main>
+  )
+}
+
 if (isMaterialsRoadmapOpen) {
   return (
     <main className="app">
@@ -2220,6 +2492,15 @@ if (isMaterialsRoadmapOpen) {
           disabled={!hasLoadedRecipes}
           >
           {`Ver materiales pendientes (${materialTotals.length})`}
+        </button>
+
+        <button
+          className="free-trial-button"
+          type="button"
+          onClick={() => setIsFreeTrialStorageOpen(true)}
+          disabled={!hasLoadedRecipes}
+        >
+          Mochila Free Trial
         </button>
 
         <button
