@@ -2,6 +2,7 @@ export type ItemSource = {
   kind: 'gathering' | 'vendor' | 'quest' | 'mob'
   name: string
   detail: string
+  region?: string
 }
 
 type GarlandPartial = {
@@ -10,9 +11,12 @@ type GarlandPartial = {
   id?: string
   obj?: {
     n?: string
-    l?: number
+    l?: number | string
     t?: string
     c?: Array<number | string>
+    z?: number
+    a?: number
+    lt?: string
   }
 }
 
@@ -26,6 +30,35 @@ type GarlandItemResponse = {
   partials?: GarlandPartial[]
 }
 
+type LocationIndexEntry = {
+  name?: string
+}
+
+let locationIndexPromise: Promise<Record<string, LocationIndexEntry>> | null =
+  null
+
+function loadLocationIndex() {
+  if (!locationIndexPromise) {
+    locationIndexPromise = fetch(
+      'https://www.garlandtools.org/db/doc/core/en/3/data.json',
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          return {}
+        }
+
+        const payload = (await response.json()) as {
+          locationIndex?: Record<string, LocationIndexEntry>
+        }
+
+        return payload.locationIndex ?? {}
+      })
+      .catch(() => ({}))
+  }
+
+  return locationIndexPromise
+}
+
 function formatCoordinates(coordinates?: Array<number | string>) {
   if (!coordinates || coordinates.length < 2) {
     return ''
@@ -35,9 +68,10 @@ function formatCoordinates(coordinates?: Array<number | string>) {
 }
 
 export async function loadItemSources(itemId: number) {
-  const response = await fetch(
-    `https://www.garlandtools.org/db/doc/item/en/3/${itemId}.json`,
-  )
+  const [response, locationIndex] = await Promise.all([
+    fetch(`https://www.garlandtools.org/db/doc/item/en/3/${itemId}.json`),
+    loadLocationIndex(),
+  ])
 
   if (!response.ok) {
     throw new Error('No se pudo cargar la guía de obtención.')
@@ -55,6 +89,11 @@ export async function loadItemSources(itemId: number) {
   for (const partial of partials) {
     const id = partial.id
     const name = partial.obj?.n
+    const regionId = partial.obj?.z ?? partial.obj?.a
+    const region =
+      typeof regionId === 'number'
+        ? locationIndex[String(regionId)]?.name
+        : undefined
 
     if (!id || !name) {
       continue
@@ -65,7 +104,10 @@ export async function loadItemSources(itemId: number) {
       sources.push({
         kind: 'gathering',
         name,
-        detail: level ? `Nodo de recolección · Nivel ${level}` : 'Nodo de recolección',
+        detail: `${partial.obj?.lt ? `${partial.obj.lt} · ` : ''}Nodo de recolección${
+          level ? ` · Nivel ${level}` : ''
+        }`,
+        region,
       })
     }
 
@@ -75,6 +117,7 @@ export async function loadItemSources(itemId: number) {
         kind: 'vendor',
         name,
         detail: `${role}${formatCoordinates(partial.obj?.c)}`,
+        region,
       })
     }
 
@@ -84,6 +127,7 @@ export async function loadItemSources(itemId: number) {
         kind: 'quest',
         name,
         detail: location ? `Misión · ${location}` : 'Misión',
+        region,
       })
     }
 
@@ -93,6 +137,7 @@ export async function loadItemSources(itemId: number) {
         kind: 'mob',
         name,
         detail: level ? `Enemigo · Nivel ${level}` : 'Enemigo',
+        region,
       })
     }
   }

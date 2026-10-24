@@ -591,6 +591,7 @@ useEffect(() => {
                   </span>
                   <strong>{source.name}</strong>
                   <small>{source.detail}</small>
+                  {source.region && <small>Región: {source.region}</small>}
                 </li>
               ))}
             </ul>
