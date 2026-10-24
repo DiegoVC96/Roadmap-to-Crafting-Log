@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import './App.css'
 import appLogo from './assets/roadmap-logo.png'
@@ -113,6 +113,8 @@ function App() {
   >({})
   const [loadedProgressUserId, setLoadedProgressUserId] = useState<string | null>(null)
   const [progressSyncError, setProgressSyncError] = useState<string | null>(null)
+  const [backupMessage, setBackupMessage] = useState<string | null>(null)
+  const backupInputRef = useRef<HTMLInputElement>(null)
 
   const selectedCrafter = crafters.find(
     (crafter) => crafter.id === selectedCrafterId,
@@ -354,6 +356,79 @@ function downloadMaterialList() {
   link.click()
   link.remove()
   URL.revokeObjectURL(downloadUrl)
+}
+
+function downloadProgressBackup() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    completedRecipeIds,
+    inventoryByItemId,
+  }
+  const file = new Blob([JSON.stringify(backup, null, 2)], {
+    type: 'application/json',
+  })
+  const downloadUrl = URL.createObjectURL(file)
+  const link = document.createElement('a')
+
+  link.href = downloadUrl
+  link.download = 'roadmap-crafting-log-respaldo.json'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(downloadUrl)
+  setBackupMessage('Respaldo descargado. Guárdalo en un lugar seguro.')
+}
+
+async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+
+  if (!file) {
+    return
+  }
+
+  try {
+    const backup: unknown = JSON.parse(await file.text())
+
+    if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
+      throw new Error('Formato inválido')
+    }
+
+    const data = backup as Record<string, unknown>
+    const restoredRecipeIds = Array.isArray(data.completedRecipeIds)
+      ? data.completedRecipeIds.filter(
+          (recipeId): recipeId is string => typeof recipeId === 'string',
+        )
+      : []
+    const restoredInventory =
+      data.inventoryByItemId &&
+      typeof data.inventoryByItemId === 'object' &&
+      !Array.isArray(data.inventoryByItemId)
+        ? Object.fromEntries(
+            Object.entries(data.inventoryByItemId).filter(
+              ([itemId, quantity]) =>
+                /^\d+$/.test(itemId) &&
+                typeof quantity === 'number' &&
+                Number.isFinite(quantity) &&
+                quantity >= 0,
+            ),
+          ) as Record<string, number>
+        : {}
+    const shouldRestore = window.confirm(
+      '¿Quieres reemplazar tu progreso e inventario actuales con este respaldo?',
+    )
+
+    if (!shouldRestore) {
+      return
+    }
+
+    setCompletedRecipeIds(restoredRecipeIds)
+    setInventoryByItemId(restoredInventory)
+    setBackupMessage('Respaldo restaurado correctamente.')
+  } catch {
+    setBackupMessage('No pudimos leer ese archivo. Selecciona un respaldo de Roadmap to Crafting Log.')
+  }
 }
 
 async function handleOpenIngredients(recipe: FfxivRecipe) {
@@ -1091,6 +1166,30 @@ if (isMaterialsRoadmapOpen) {
             style={{ width: `${overallProgress}%` }}
           />
         </div>
+      </section>
+
+      <section className="progress-backup" aria-label="Respaldo de progreso">
+        <div>
+          <p className="section-label">TUS DATOS</p>
+          <h2>Respaldo de progreso</h2>
+          <p>Guarda o restaura tus recetas completadas y cantidades de inventario.</p>
+        </div>
+        <div className="progress-backup-actions">
+          <button type="button" onClick={downloadProgressBackup}>
+            Descargar respaldo
+          </button>
+          <button type="button" onClick={() => backupInputRef.current?.click()}>
+            Restaurar respaldo
+          </button>
+          <input
+            ref={backupInputRef}
+            className="backup-file-input"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void restoreProgressBackup(event)}
+          />
+        </div>
+        {backupMessage && <p className="backup-message" role="status">{backupMessage}</p>}
       </section>
 
       {nextCraftingGoal && (

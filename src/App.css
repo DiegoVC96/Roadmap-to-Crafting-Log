@@ -150,6 +150,68 @@ h1 {
   transition: width 250ms ease;
 }
 
+.progress-backup {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid rgba(96, 139, 164, 0.54);
+  border-radius: 14px;
+  background: rgba(17, 31, 42, 0.72);
+}
+
+.progress-backup h2 {
+  margin: 3px 0 6px;
+  color: #d8e9f4;
+  font-family: Georgia, serif;
+  font-size: 1.25rem;
+}
+
+.progress-backup p:not(.section-label, .backup-message) {
+  margin: 0;
+  color: #bfcbd6;
+}
+
+.progress-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.progress-backup-actions button {
+  padding: 10px 12px;
+  border: 1px solid #6c9abe;
+  border-radius: 8px;
+  color: #e5f2fb;
+  background: rgba(33, 69, 91, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.progress-backup-actions button:hover {
+  border-color: #b9dff5;
+  background: rgba(48, 91, 118, 0.84);
+}
+
+.backup-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.backup-message {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: #aee6b8;
+  font-size: 0.9rem;
+}
+
 .crafting-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -240,6 +302,18 @@ h1 {
   .next-crafting-goal {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .progress-backup {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-backup-actions {
+    justify-content: stretch;
+  }
+
+  .progress-backup-actions button {
+    flex: 1;
   }
 
   .next-crafting-goal button {
