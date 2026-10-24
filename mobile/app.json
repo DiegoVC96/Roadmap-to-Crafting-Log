@@ -32,7 +32,9 @@
           "image": "./assets/images/roadmap-logo.png",
           "imageWidth": 180
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
