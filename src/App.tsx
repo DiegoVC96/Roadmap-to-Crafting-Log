@@ -95,6 +95,9 @@ function App() {
   const [materialSort, setMaterialSort] = useState<'remaining' | 'name'>(
     'remaining',
   )
+  const [materialCrafterScope, setMaterialCrafterScope] = useState<
+    'all' | CrafterId
+  >('all')
   const [recipeFilter, setRecipeFilter] = useState<
     'all' | 'pending' | 'completed'
   >('all')
@@ -187,8 +190,14 @@ const visibleSelectedRecipes = selectedRecipes.filter((recipe) => {
 })
 
 const materialTotals = useMemo(() => {
-  return calculateBaseMaterialTotals(recipes, completedRecipeIds)
-}, [recipes, completedRecipeIds])
+  return calculateBaseMaterialTotals(
+    recipes,
+    completedRecipeIds,
+    materialCrafterScope === 'all'
+      ? undefined
+      : (recipe) => recipe.crafter === materialCrafterScope,
+  )
+}, [recipes, completedRecipeIds, materialCrafterScope])
 
 const materialCollectionSummary = useMemo(() => {
   const totalRequired = materialTotals.reduce(
@@ -979,7 +988,11 @@ if (isMaterialsRoadmapOpen) {
         <div className="materials-roadmap-heading">
           <div>
             <p className="section-label">ROADMAP DE MATERIALES</p>
-            <h2>Necesitas reunir o fabricar</h2>
+            <h2>
+              {materialCrafterScope === 'all'
+                ? 'Necesitas reunir o fabricar'
+                : `Materiales de ${materialCrafterScope}`}
+            </h2>
           </div>
 
           <div className="materials-roadmap-actions">
@@ -1002,6 +1015,23 @@ if (isMaterialsRoadmapOpen) {
           Las recetas intermedias se convierten automáticamente en materiales base.
           Selecciona un material para ver cómo obtenerlo sin crafting.
         </p>
+
+        <label className="material-crafter-scope">
+          Ver materiales de
+          <select
+            value={materialCrafterScope}
+            onChange={(event) =>
+              setMaterialCrafterScope(event.target.value as 'all' | CrafterId)
+            }
+          >
+            <option value="all">Todas las profesiones</option>
+            {crafters.map((crafter) => (
+              <option key={crafter.id} value={crafter.id}>
+                {crafter.id}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <section className="material-collection-summary" aria-label="Progreso de recolección">
           <div className="collection-progress-card collection-progress-card-primary">

@@ -31,6 +31,7 @@ function chooseCraftingRecipe(recipes: FfxivRecipe[]) {
 export function calculateBaseMaterialTotals(
   recipes: FfxivRecipe[],
   completedRecipeIds: string[],
+  includesRootRecipe: (recipe: FfxivRecipe) => boolean = () => true,
 ) {
   const completed = new Set(completedRecipeIds)
   const producersByItem = new Map<number, FfxivRecipe[]>()
@@ -82,7 +83,7 @@ export function calculateBaseMaterialTotals(
   }
 
   for (const recipe of recipes) {
-    if (completed.has(recipe.id)) {
+    if (completed.has(recipe.id) || !includesRootRecipe(recipe)) {
       continue
     }
 

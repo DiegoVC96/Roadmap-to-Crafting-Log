@@ -782,6 +782,30 @@ h1 {
   color: #bfc7d4;
 }
 
+.material-crafter-scope {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: fit-content;
+  margin: 0 0 18px;
+  color: #c7d2dd;
+  font-size: 0.92rem;
+}
+
+.material-crafter-scope select {
+  padding: 10px 12px;
+  border: 1px solid #536f87;
+  border-radius: 8px;
+  color: #fff3d4;
+  background: rgba(7, 15, 23, 0.82);
+  font: inherit;
+}
+
+.material-crafter-scope select:focus {
+  border-color: #e7b85a;
+  outline: 3px solid rgba(231, 184, 90, 0.18);
+}
+
 .material-collection-summary {
   display: grid;
   grid-template-columns: minmax(190px, 1.4fr) repeat(3, minmax(135px, 1fr));
@@ -1640,6 +1664,11 @@ button:focus-visible {
 
   .material-collection-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .material-crafter-scope {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .material-roadmap-controls {
