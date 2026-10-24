@@ -621,6 +621,21 @@ h1 {
   white-space: nowrap;
 }
 
+.material-total-card .material-total-name {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  white-space: normal;
+}
+
+.material-total-name small {
+  overflow: hidden;
+  color: #aebbc6;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .material-total-card strong {
   color: #f4ce79;
 }
@@ -1049,6 +1064,12 @@ button:focus-visible {
   color: #dce9d0;
 }
 
+.material-inventory-summary {
+  margin: 8px 0 0;
+  color: #f4ce79;
+  font-size: 0.94rem;
+}
+
 .material-guide-icon {
   width: 70px;
   height: 70px;
@@ -1078,6 +1099,47 @@ button:focus-visible {
 .material-breakdown h3 {
   margin-bottom: 12px;
   color: #f4ce79;
+}
+
+.material-inventory-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 24px;
+  padding: 16px;
+  border: 1px solid rgba(116, 174, 136, 0.48);
+  border-radius: 10px;
+  background: rgba(27, 61, 48, 0.34);
+}
+
+.material-inventory-panel h3 {
+  margin: 0 0 5px;
+  color: #d7f0cb;
+}
+
+.material-inventory-panel p {
+  margin: 0;
+  color: #c4d3c6;
+}
+
+.material-inventory-panel label {
+  display: grid;
+  gap: 6px;
+  color: #e7f3e2;
+  font-weight: 700;
+  text-align: center;
+}
+
+.material-inventory-panel input {
+  width: 106px;
+  padding: 9px 10px;
+  border: 1px solid rgba(180, 222, 175, 0.7);
+  border-radius: 8px;
+  background: rgba(5, 15, 12, 0.78);
+  color: #fff6da;
+  font: inherit;
+  text-align: center;
 }
 
 .material-breakdown ul {
@@ -1271,6 +1333,16 @@ button:focus-visible {
   .ingredient-panel-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .material-inventory-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .material-inventory-panel input {
+    width: min(100%, 180px);
+    margin: 0 auto;
   }
 
   .close-panel-button,

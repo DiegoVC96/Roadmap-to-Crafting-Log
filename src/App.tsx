@@ -102,6 +102,9 @@ function App() {
   const [isItemSourcesPageOpen, setIsItemSourcesPageOpen] = useState(false)
   const [itemSourcesError, setItemSourcesError] = useState<string | null>(null)
   const [completedRecipeIds, setCompletedRecipeIds] = useState<string[]>([])
+  const [inventoryByItemId, setInventoryByItemId] = useState<
+    Record<string, number>
+  >({})
   const [loadedProgressUserId, setLoadedProgressUserId] = useState<string | null>(null)
   const [progressSyncError, setProgressSyncError] = useState<string | null>(null)
 
@@ -180,6 +183,18 @@ function resetProgress() {
   if (shouldReset) {
     setCompletedRecipeIds([])
   }
+}
+
+function updateInventory(itemId: number, value: string) {
+  const parsedQuantity = Number(value)
+  const quantity = Number.isFinite(parsedQuantity)
+    ? Math.max(0, Math.floor(parsedQuantity))
+    : 0
+
+  setInventoryByItemId((currentInventory) => ({
+    ...currentInventory,
+    [itemId]: quantity,
+  }))
 }
 
 async function handleOpenIngredients(recipe: FfxivRecipe) {
@@ -356,10 +371,11 @@ useEffect(() => {
     }
 
     try {
-      const savedRecipeIds = await loadUserProgress(activeUserId)
+      const savedProgress = await loadUserProgress(activeUserId)
 
       if (isActive) {
-        setCompletedRecipeIds(savedRecipeIds)
+        setCompletedRecipeIds(savedProgress.completedRecipeIds)
+        setInventoryByItemId(savedProgress.inventoryByItemId)
       }
     } catch {
       if (isActive) {
@@ -393,7 +409,10 @@ useEffect(() => {
   }
 
   const saveTimeout = window.setTimeout(() => {
-    void saveUserProgress(userId, completedRecipeIds).catch(() => {
+    void saveUserProgress(userId, {
+      completedRecipeIds,
+      inventoryByItemId,
+    }).catch(() => {
       setProgressSyncError(
         'No pudimos guardar el último cambio. Revisa tu conexión e inténtalo nuevamente.',
       )
@@ -403,6 +422,7 @@ useEffect(() => {
   return () => window.clearTimeout(saveTimeout)
 }, [
   completedRecipeIds,
+  inventoryByItemId,
   currentUser?.uid,
   loadedProgressUserId,
   accessState.status,
@@ -494,6 +514,13 @@ useEffect(() => {
   }
 
   if (isItemSourcesPageOpen && selectedMaterialSource) {
+  const ownedQuantity =
+    inventoryByItemId[String(selectedMaterialSource.itemId)] ?? 0
+  const remainingQuantity = Math.max(
+    selectedMaterialSource.quantity - ownedQuantity,
+    0,
+  )
+
   return (
     <main className="app">
       <header className="hero">
@@ -533,8 +560,12 @@ useEffect(() => {
             <p className="section-label">MATERIAL PENDIENTE</p>
             <h2>{selectedMaterialSource.name}</h2>
             <strong>
-              Necesitas ×{selectedMaterialSource.quantity.toLocaleString()}
+              Total necesario ×{selectedMaterialSource.quantity.toLocaleString()}
             </strong>
+            <p className="material-inventory-summary">
+              Ya tienes ×{ownedQuantity.toLocaleString()} · Te faltan ×
+              {remainingQuantity.toLocaleString()}
+            </p>
           </div>
         </div>
 
@@ -556,6 +587,26 @@ useEffect(() => {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div className="material-inventory-panel">
+            <div>
+              <h3>Tu inventario</h3>
+              <p>Indica cuántas unidades de este material ya tienes.</p>
+            </div>
+            <label>
+              Ya tengo
+              <input
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                value={ownedQuantity}
+                onChange={(event) =>
+                  updateInventory(selectedMaterialSource.itemId, event.target.value)
+                }
+              />
+            </label>
           </div>
 
           <h3>Cómo obtener este material</h3>
@@ -684,9 +735,16 @@ if (isMaterialsRoadmapOpen) {
         )}
 
         <div className="materials-summary-list">
-          {visibleMaterialTotals.map((material) => (
-            <div className="material-total-entry" key={material.itemId}>
-              <button
+          {visibleMaterialTotals.map((material) => {
+            const ownedQuantity = inventoryByItemId[String(material.itemId)] ?? 0
+            const remainingQuantity = Math.max(
+              material.quantity - ownedQuantity,
+              0,
+            )
+
+            return (
+              <div className="material-total-entry" key={material.itemId}>
+                <button
                 className={`material-total-card ${
                   highlightedMaterialId === material.itemId
                     ? 'highlighted-material'
@@ -704,11 +762,18 @@ if (isMaterialsRoadmapOpen) {
                   />
                 ) : null}
 
-                <span>{material.name}</span>
-                <strong>×{material.quantity.toLocaleString()}</strong>
-              </button>
-            </div>
-          ))}
+                  <span className="material-total-name">
+                    {material.name}
+                    <small>
+                      Total ×{material.quantity.toLocaleString()} · Faltan ×
+                      {remainingQuantity.toLocaleString()}
+                    </small>
+                  </span>
+                  <strong>×{remainingQuantity.toLocaleString()}</strong>
+                </button>
+              </div>
+            )
+          })}
         </div>
       </section>
     </main>
