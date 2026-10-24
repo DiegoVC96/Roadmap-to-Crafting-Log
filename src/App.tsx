@@ -21,7 +21,10 @@ import {
   type RecipeIngredient,
 } from './data/ffxivApi'
 import { loadItemSources, type ItemSource } from './data/itemSources'
-import { calculateBaseMaterialTotals } from './data/materialRoadmap'
+import {
+  calculateBaseMaterialTotals,
+  type BaseMaterialTotal,
+} from './data/materialRoadmap'
 import {
   readRecipeCatalog,
   saveRecipeCatalog,
@@ -93,7 +96,7 @@ function App() {
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<number | null>(null)
   const [selectedMaterialSource, setSelectedMaterialSource] =
-    useState<RecipeIngredient | null>(null)
+    useState<BaseMaterialTotal | null>(null)
   const [itemSources, setItemSources] = useState<ItemSource[]>([])
   const [isLoadingItemSources, setIsLoadingItemSources] = useState(false)
   const [isItemSourcesPageOpen, setIsItemSourcesPageOpen] = useState(false)
@@ -215,7 +218,7 @@ function openMaterialTotal(materialId: number) {
   setHighlightedMaterialId(materialId)
 }
 
-async function openItemSources(material: RecipeIngredient) {
+async function openItemSources(material: BaseMaterialTotal) {
   setIsItemSourcesPageOpen(true)
   setSelectedMaterialSource(material)
   setItemSources([])
@@ -536,6 +539,25 @@ useEffect(() => {
         </div>
 
         <section className="material-sources-panel material-guide-sources">
+          <div className="material-breakdown">
+            <h3>Por qué necesitas este material</h3>
+            <ul>
+              {selectedMaterialSource.breakdown.map((entry) => (
+                <li key={`${entry.recipeId}-${entry.kind}`}>
+                  <div>
+                    <strong>{entry.recipeName}</strong>
+                    <small>
+                      {entry.kind === 'intermediate'
+                        ? `${entry.crafter} · fabricar ×${entry.crafts.toLocaleString()} para otras recetas`
+                        : `${entry.crafter} · receta pendiente del log`}
+                    </small>
+                  </div>
+                  <b>×{entry.quantity.toLocaleString()}</b>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <h3>Cómo obtener este material</h3>
 
           {isLoadingItemSources && (
