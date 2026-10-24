@@ -1373,6 +1373,30 @@ button:focus-visible {
   text-align: center;
 }
 
+.farming-session-button {
+  width: 100%;
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1px solid rgba(112, 152, 196, 0.72);
+  border-radius: 9px;
+  color: #e1efff;
+  background: rgba(37, 72, 108, 0.5);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.farming-session-button:hover {
+  border-color: #c4e0ff;
+  background: rgba(48, 91, 137, 0.68);
+}
+
+.farming-session-button.is-active {
+  border-color: rgba(140, 205, 153, 0.82);
+  color: #d8f5de;
+  background: rgba(47, 106, 70, 0.54);
+}
+
 .material-breakdown ul {
   display: grid;
   gap: 8px;

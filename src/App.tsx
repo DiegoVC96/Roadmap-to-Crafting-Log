@@ -90,7 +90,7 @@ function App() {
   const [searchText, setSearchText] = useState('')
   const [materialSearchText, setMaterialSearchText] = useState('')
   const [materialStatusFilter, setMaterialStatusFilter] = useState<
-    'all' | 'missing' | 'collected'
+    'all' | 'missing' | 'collected' | 'session'
   >('all')
   const [materialSort, setMaterialSort] = useState<'remaining' | 'name'>(
     'remaining',
@@ -111,6 +111,7 @@ function App() {
   const [inventoryByItemId, setInventoryByItemId] = useState<
     Record<string, number>
   >({})
+  const [farmingSessionItemIds, setFarmingSessionItemIds] = useState<number[]>([])
   const [loadedProgressUserId, setLoadedProgressUserId] = useState<string | null>(null)
   const [progressSyncError, setProgressSyncError] = useState<string | null>(null)
   const [backupMessage, setBackupMessage] = useState<string | null>(null)
@@ -228,7 +229,9 @@ const visibleMaterialTotals = useMemo(() => {
       const matchesStatus =
         materialStatusFilter === 'all' ||
         (materialStatusFilter === 'missing' && remainingQuantity > 0) ||
-        (materialStatusFilter === 'collected' && remainingQuantity === 0)
+        (materialStatusFilter === 'collected' && remainingQuantity === 0) ||
+        (materialStatusFilter === 'session' &&
+          farmingSessionItemIds.includes(material.itemId))
 
       return (
         matchesStatus &&
@@ -255,6 +258,7 @@ const visibleMaterialTotals = useMemo(() => {
     })
 }, [
   inventoryByItemId,
+  farmingSessionItemIds,
   materialSearchText,
   materialSort,
   materialStatusFilter,
@@ -326,6 +330,14 @@ function updateInventory(itemId: number, value: string) {
   }))
 }
 
+function toggleFarmingSession(itemId: number) {
+  setFarmingSessionItemIds((currentItemIds) =>
+    currentItemIds.includes(itemId)
+      ? currentItemIds.filter((currentItemId) => currentItemId !== itemId)
+      : [...currentItemIds, itemId],
+  )
+}
+
 function downloadMaterialList() {
   const escapeCsvValue = (value: string | number) =>
     `"${String(value).replaceAll('"', '""')}"`
@@ -364,6 +376,7 @@ function downloadProgressBackup() {
     exportedAt: new Date().toISOString(),
     completedRecipeIds,
     inventoryByItemId,
+    farmingSessionItemIds,
   }
   const file = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',
@@ -415,6 +428,14 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
             ),
           ) as Record<string, number>
         : {}
+    const restoredFarmingSessionItemIds = Array.isArray(data.farmingSessionItemIds)
+      ? data.farmingSessionItemIds.filter(
+          (itemId): itemId is number =>
+            typeof itemId === 'number' &&
+            Number.isSafeInteger(itemId) &&
+            itemId > 0,
+        )
+      : []
     const shouldRestore = window.confirm(
       '¿Quieres reemplazar tu progreso e inventario actuales con este respaldo?',
     )
@@ -425,6 +446,7 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
 
     setCompletedRecipeIds(restoredRecipeIds)
     setInventoryByItemId(restoredInventory)
+    setFarmingSessionItemIds(restoredFarmingSessionItemIds)
     setBackupMessage('Respaldo restaurado correctamente.')
   } catch {
     setBackupMessage('No pudimos leer ese archivo. Selecciona un respaldo de Roadmap to Crafting Log.')
@@ -610,6 +632,7 @@ useEffect(() => {
       if (isActive) {
         setCompletedRecipeIds(savedProgress.completedRecipeIds)
         setInventoryByItemId(savedProgress.inventoryByItemId)
+        setFarmingSessionItemIds(savedProgress.farmingSessionItemIds)
       }
     } catch {
       if (isActive) {
@@ -646,6 +669,7 @@ useEffect(() => {
     void saveUserProgress(userId, {
       completedRecipeIds,
       inventoryByItemId,
+      farmingSessionItemIds,
     }).catch(() => {
       setProgressSyncError(
         'No pudimos guardar el último cambio. Revisa tu conexión e inténtalo nuevamente.',
@@ -657,6 +681,7 @@ useEffect(() => {
 }, [
   completedRecipeIds,
   inventoryByItemId,
+  farmingSessionItemIds,
   currentUser?.uid,
   loadedProgressUserId,
   accessState.status,
@@ -754,6 +779,9 @@ useEffect(() => {
     selectedMaterialSource.quantity - ownedQuantity,
     0,
   )
+  const isInFarmingSession = farmingSessionItemIds.includes(
+    selectedMaterialSource.itemId,
+  )
 
   return (
     <main className="app">
@@ -842,6 +870,18 @@ useEffect(() => {
               />
             </label>
           </div>
+
+          <button
+            className={`farming-session-button ${
+              isInFarmingSession ? 'is-active' : ''
+            }`}
+            type="button"
+            onClick={() => toggleFarmingSession(selectedMaterialSource.itemId)}
+          >
+            {isInFarmingSession
+              ? '✓ En tu sesión de recolección'
+              : '+ Añadir a mi sesión de recolección'}
+          </button>
 
           <h3>Cómo obtener este material</h3>
 
@@ -1025,6 +1065,13 @@ if (isMaterialsRoadmapOpen) {
               onClick={() => setMaterialStatusFilter('collected')}
             >
               Completos
+            </button>
+            <button
+              className={materialStatusFilter === 'session' ? 'active' : ''}
+              type="button"
+              onClick={() => setMaterialStatusFilter('session')}
+            >
+              Mi sesión ({farmingSessionItemIds.length})
             </button>
           </div>
 

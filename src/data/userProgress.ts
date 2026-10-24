@@ -27,16 +27,30 @@ function readInventory(value: unknown) {
   ) as Record<string, number>
 }
 
+function readItemIds(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter(
+        (itemId): itemId is number =>
+          typeof itemId === 'number' && Number.isSafeInteger(itemId) && itemId > 0,
+      )
+    : []
+}
+
 export type UserProgress = {
   completedRecipeIds: string[]
   inventoryByItemId: Record<string, number>
+  farmingSessionItemIds: number[]
 }
 
 export async function loadUserProgress(userId: string) {
   const snapshot = await getDoc(progressDocument(userId))
 
   if (!snapshot.exists()) {
-    return { completedRecipeIds: [], inventoryByItemId: {} }
+    return {
+      completedRecipeIds: [],
+      inventoryByItemId: {},
+      farmingSessionItemIds: [],
+    }
   }
 
   const data = snapshot.data()
@@ -44,6 +58,7 @@ export async function loadUserProgress(userId: string) {
   return {
     completedRecipeIds: readRecipeIds(data.completedRecipeIds),
     inventoryByItemId: readInventory(data.inventoryByItemId),
+    farmingSessionItemIds: readItemIds(data.farmingSessionItemIds),
   }
 }
 
@@ -53,6 +68,7 @@ export async function saveUserProgress(userId: string, progress: UserProgress) {
     {
       completedRecipeIds: progress.completedRecipeIds,
       inventoryByItemId: progress.inventoryByItemId,
+      farmingSessionItemIds: progress.farmingSessionItemIds,
       updatedAt: serverTimestamp(),
     },
     { merge: true },
