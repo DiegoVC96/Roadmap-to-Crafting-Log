@@ -39,6 +39,13 @@ type Crafter = {
   icon: string
 }
 
+type VendorShoppingItem = {
+  material: BaseMaterialTotal
+  quantity: number
+  vendors: ItemSource[]
+  unitPrice: number | null
+}
+
 const crafters: Crafter[] = [
   {
     id: 'Carpenter',
@@ -143,6 +150,16 @@ function App() {
   >('all')
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
+  const [isVendorShoppingOpen, setIsVendorShoppingOpen] = useState(false)
+  const [vendorShoppingItems, setVendorShoppingItems] = useState<
+    VendorShoppingItem[]
+  >([])
+  const [isLoadingVendorShopping, setIsLoadingVendorShopping] = useState(false)
+  const [vendorShoppingProgress, setVendorShoppingProgress] = useState({
+    current: 0,
+    total: 0,
+  })
+  const [vendorShoppingError, setVendorShoppingError] = useState<string | null>(null)
   const [isCraftingTreeOpen, setIsCraftingTreeOpen] = useState(false)
   const [selectedCraftingTreeRecipe, setSelectedCraftingTreeRecipe] =
     useState<FfxivRecipe | null>(null)
@@ -272,6 +289,19 @@ const selectedCraftingTree = useMemo(
       : null,
   [recipes, selectedCraftingTreeCrafts, selectedCraftingTreeRecipe],
 )
+
+const vendorShoppingCost = useMemo(
+  () =>
+    vendorShoppingItems.reduce(
+      (total, item) =>
+        total + (item.unitPrice === null ? 0 : item.quantity * item.unitPrice),
+      0,
+    ),
+  [vendorShoppingItems],
+)
+const vendorShoppingItemsWithoutPrice = vendorShoppingItems.filter(
+  (item) => item.unitPrice === null,
+).length
 
 const materialCollectionSummary = useMemo(() => {
   const totalRequired = materialTotals.reduce(
@@ -573,6 +603,83 @@ function openCraftingTree(recipe: FfxivRecipe | null = null) {
   setSelectedCraftingTreeRecipe(recipe)
   setCraftingTreeSearchText('')
   setIsCraftingTreeOpen(true)
+}
+
+function openVendorShoppingList() {
+  const materialsToCheck = materialTotals
+    .map((material) => ({
+      material,
+      quantity: Math.max(
+        material.quantity - (inventoryByItemId[String(material.itemId)] ?? 0),
+        0,
+      ),
+    }))
+    .filter(({ quantity }) => quantity > 0)
+
+  setIsItemSourcesPageOpen(false)
+  setIsVendorShoppingOpen(true)
+  setVendorShoppingItems([])
+  setVendorShoppingError(null)
+  setVendorShoppingProgress({ current: 0, total: materialsToCheck.length })
+  setIsLoadingVendorShopping(true)
+
+  async function loadVendorShoppingList() {
+    const shoppingItems: VendorShoppingItem[] = []
+    let checkedMaterials = 0
+    let failedMaterials = 0
+    const batchSize = 6
+
+    for (let index = 0; index < materialsToCheck.length; index += batchSize) {
+      const batch = materialsToCheck.slice(index, index + batchSize)
+      const batchResults = await Promise.all(
+        batch.map(async ({ material, quantity }) => {
+          try {
+            const vendors = (await loadItemSources(material.itemId)).filter(
+              (source) => source.kind === 'vendor',
+            )
+            const unitPrice = vendors.find(
+              (vendor) => typeof vendor.price === 'number',
+            )?.price
+
+            return vendors.length > 0
+              ? {
+                  material,
+                  quantity,
+                  vendors,
+                  unitPrice: unitPrice ?? null,
+                }
+              : null
+          } catch {
+            failedMaterials += 1
+            return null
+          } finally {
+            checkedMaterials += 1
+          }
+        }),
+      )
+
+      shoppingItems.push(
+        ...(batchResults.filter(
+          (item): item is VendorShoppingItem => item !== null,
+        )),
+      )
+      setVendorShoppingItems([...shoppingItems])
+      setVendorShoppingProgress({
+        current: checkedMaterials,
+        total: materialsToCheck.length,
+      })
+    }
+
+    if (failedMaterials > 0) {
+      setVendorShoppingError(
+        `No pudimos consultar ${failedMaterials} materiales. Puedes volver a intentarlo más tarde.`,
+      )
+    }
+
+    setIsLoadingVendorShopping(false)
+  }
+
+  void loadVendorShoppingList()
 }
 
 function openMaterialTotal(materialId: number) {
@@ -1040,6 +1147,134 @@ useEffect(() => {
   )
 }
 
+  if (isVendorShoppingOpen) {
+    return (
+      <main className="app">
+        <header className="hero">
+          <p className="eyebrow">FINAL FANTASY XIV</p>
+          <img
+            className="app-logo"
+            src={appLogo}
+            alt="Emblema de Roadmap to Crafting Log"
+          />
+          <h1>Lista de compras NPC</h1>
+          <p className="subtitle">
+            Materiales pendientes que puedes comprar a vendedores del juego.
+          </p>
+          <AccountActions user={currentUser} />
+        </header>
+
+        <section className="vendor-shopping-page">
+          <button
+            className="back-to-materials-button"
+            type="button"
+            onClick={() => setIsVendorShoppingOpen(false)}
+          >
+            ← Volver a materiales pendientes
+          </button>
+
+          <div className="vendor-shopping-heading">
+            <div>
+              <p className="section-label">COMPRAS A VENDEDORES</p>
+              <h2>Tu lista de compras</h2>
+            </div>
+            <strong>
+              {vendorShoppingItems.length} materiales · {vendorShoppingCost.toLocaleString()} gil
+            </strong>
+          </div>
+
+          <p className="vendor-shopping-description">
+            El coste es una estimación basada en el precio fijo de NPC. No incluye precios de mercado.
+          </p>
+
+          {isLoadingVendorShopping && (
+            <div className="vendor-shopping-loading">
+              <p>
+                Consultando vendedores: {vendorShoppingProgress.current} de {vendorShoppingProgress.total} materiales.
+              </p>
+              <div className="collection-progress-bar" aria-hidden="true">
+                <i
+                  style={{
+                    width: `${
+                      vendorShoppingProgress.total === 0
+                        ? 0
+                        : Math.round(
+                            (vendorShoppingProgress.current /
+                              vendorShoppingProgress.total) *
+                              100,
+                          )
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {vendorShoppingError && (
+            <p className="error-message">{vendorShoppingError}</p>
+          )}
+
+          {!isLoadingVendorShopping && vendorShoppingItems.length === 0 && (
+            <p className="empty-state">
+              No encontramos materiales pendientes que tengan vendedor NPC.
+            </p>
+          )}
+
+          {vendorShoppingItemsWithoutPrice > 0 && (
+            <p className="vendor-shopping-note">
+              {vendorShoppingItemsWithoutPrice} materiales tienen vendedor, pero no un precio confirmado; no se suman al total de gil.
+            </p>
+          )}
+
+          <div className="vendor-shopping-list">
+            {vendorShoppingItems.map((item) => {
+              const primaryVendor = item.vendors[0]
+
+              return (
+                <article key={item.material.itemId}>
+                  <div className="vendor-shopping-item-heading">
+                    {item.material.iconPath ? (
+                      <img
+                        className="game-icon"
+                        src={getIconUrl(item.material.iconPath)}
+                        alt=""
+                      />
+                    ) : null}
+                    <div>
+                      <h3>{item.material.name}</h3>
+                      <p>Comprar ×{item.quantity.toLocaleString()}</p>
+                    </div>
+                    <strong>
+                      {item.unitPrice === null
+                        ? 'Precio no disponible'
+                        : `${(item.unitPrice * item.quantity).toLocaleString()} gil`}
+                    </strong>
+                  </div>
+                  <p className="vendor-shopping-unit-price">
+                    {item.unitPrice === null
+                      ? 'Precio unitario no confirmado'
+                      : `${item.unitPrice.toLocaleString()} gil por unidad`}
+                  </p>
+                  <div className="vendor-shopping-vendor">
+                    <span>Vendedor recomendado</span>
+                    <b>{primaryVendor.name}</b>
+                    <small>
+                      {primaryVendor.detail}
+                      {primaryVendor.region ? ` · ${primaryVendor.region}` : ''}
+                      {item.vendors.length > 1
+                        ? ` · ${item.vendors.length - 1} alternativas`
+                        : ''}
+                    </small>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (isCraftingTreeOpen) {
     return (
       <main className="app">
@@ -1185,6 +1420,13 @@ if (isMaterialsRoadmapOpen) {
               disabled={!Object.values(inventoryByItemId).some((quantity) => quantity > 0)}
             >
               Reiniciar inventario
+            </button>
+            <button
+              className="vendor-shopping-button"
+              type="button"
+              onClick={openVendorShoppingList}
+            >
+              Lista de vendedores
             </button>
           </div>
         </div>

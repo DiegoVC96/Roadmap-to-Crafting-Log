@@ -3,6 +3,7 @@ export type ItemSource = {
   name: string
   detail: string
   region?: string
+  price?: number
 }
 
 type GarlandPartial = {
@@ -26,9 +27,12 @@ type GarlandItemResponse = {
     vendors?: number[]
     quests?: number[]
     drops?: number[]
+    price?: number
   }
   partials?: GarlandPartial[]
 }
+
+const itemSourcesCache = new Map<number, Promise<ItemSource[]>>()
 
 type LocationIndexEntry = {
   name?: string
@@ -67,7 +71,7 @@ function formatCoordinates(coordinates?: Array<number | string>) {
   return ` (${coordinates[0]}, ${coordinates[1]})`
 }
 
-export async function loadItemSources(itemId: number) {
+async function fetchItemSources(itemId: number) {
   const [response, locationIndex] = await Promise.all([
     fetch(`https://www.garlandtools.org/db/doc/item/en/3/${itemId}.json`),
     loadLocationIndex(),
@@ -81,6 +85,10 @@ export async function loadItemSources(itemId: number) {
   const partials = payload.partials ?? []
   const nodeIds = new Set((payload.item?.nodes ?? []).map(String))
   const vendorIds = new Set((payload.item?.vendors ?? []).map(String))
+  const vendorPrice =
+    typeof payload.item?.price === 'number' && payload.item.price >= 0
+      ? payload.item.price
+      : undefined
   const questIds = new Set((payload.item?.quests ?? []).map(String))
   const mobIds = new Set((payload.item?.drops ?? []).map(String))
 
@@ -118,6 +126,7 @@ export async function loadItemSources(itemId: number) {
         name,
         detail: `${role}${formatCoordinates(partial.obj?.c)}`,
         region,
+        price: vendorPrice,
       })
     }
 
@@ -142,5 +151,20 @@ export async function loadItemSources(itemId: number) {
     }
   }
 
+  return sources
+}
+
+export function loadItemSources(itemId: number) {
+  const cachedSources = itemSourcesCache.get(itemId)
+
+  if (cachedSources) {
+    return cachedSources
+  }
+
+  const sources = fetchItemSources(itemId)
+  itemSourcesCache.set(itemId, sources)
+  void sources.catch(() => {
+    itemSourcesCache.delete(itemId)
+  })
   return sources
 }
