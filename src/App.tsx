@@ -22,6 +22,13 @@ import {
 } from './data/ffxivApi'
 import { loadItemSources, type ItemSource } from './data/itemSources'
 import {
+  loadMarketLocations,
+  loadMarketPrices,
+  type MarketLocations,
+  type MarketPrice,
+  type MarketScope,
+} from './data/marketBoard'
+import {
   buildCraftingTree,
   calculateBaseMaterialTotals,
   calculateRecipeCraftTotals,
@@ -118,6 +125,20 @@ function CraftingTreeNodeView({
   )
 }
 
+function readMarketScope(value: unknown): MarketScope | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const scope = value as { type?: unknown; name?: unknown }
+
+  return (scope.type === 'world' || scope.type === 'dataCenter') &&
+    typeof scope.name === 'string' &&
+    scope.name.length > 0
+    ? { type: scope.type, name: scope.name }
+    : null
+}
+
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -160,6 +181,15 @@ function App() {
     total: 0,
   })
   const [vendorShoppingError, setVendorShoppingError] = useState<string | null>(null)
+  const [marketScope, setMarketScope] = useState<MarketScope | null>(null)
+  const [marketScopeType, setMarketScopeType] = useState<
+    MarketScope['type']
+  >('world')
+  const [marketLocations, setMarketLocations] = useState<MarketLocations | null>(null)
+  const [marketLocationsError, setMarketLocationsError] = useState<string | null>(null)
+  const [marketPrices, setMarketPrices] = useState<Record<number, MarketPrice>>({})
+  const [isLoadingMarketPrices, setIsLoadingMarketPrices] = useState(false)
+  const [marketPricesError, setMarketPricesError] = useState<string | null>(null)
   const [isCraftingTreeOpen, setIsCraftingTreeOpen] = useState(false)
   const [selectedCraftingTreeRecipe, setSelectedCraftingTreeRecipe] =
     useState<FfxivRecipe | null>(null)
@@ -302,6 +332,12 @@ const vendorShoppingCost = useMemo(
 const vendorShoppingItemsWithoutPrice = vendorShoppingItems.filter(
   (item) => item.unitPrice === null,
 ).length
+const marketShoppingCost = vendorShoppingItems.reduce(
+  (total, item) =>
+    total +
+    ((marketPrices[item.material.itemId]?.pricePerUnit ?? 0) * item.quantity),
+  0,
+)
 
 const materialCollectionSummary = useMemo(() => {
   const totalRequired = materialTotals.reduce(
@@ -490,6 +526,7 @@ function downloadProgressBackup() {
     completedRecipeIds,
     inventoryByItemId,
     farmingSessionItemIds,
+    marketScope,
   }
   const file = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',
@@ -560,6 +597,11 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
     setCompletedRecipeIds(restoredRecipeIds)
     setInventoryByItemId(restoredInventory)
     setFarmingSessionItemIds(restoredFarmingSessionItemIds)
+    const restoredMarketScope = readMarketScope(data.marketScope)
+    setMarketScope(restoredMarketScope)
+    if (restoredMarketScope) {
+      setMarketScopeType(restoredMarketScope.type)
+    }
     setBackupMessage('Respaldo restaurado correctamente.')
   } catch {
     setBackupMessage('No pudimos leer ese archivo. Selecciona un respaldo de Roadmap to Crafting Log.')
@@ -831,6 +873,8 @@ useEffect(() => {
         setCompletedRecipeIds(savedProgress.completedRecipeIds)
         setInventoryByItemId(savedProgress.inventoryByItemId)
         setFarmingSessionItemIds(savedProgress.farmingSessionItemIds)
+        setMarketScope(savedProgress.marketScope)
+        setMarketScopeType(savedProgress.marketScope?.type ?? 'world')
       }
     } catch {
       if (isActive) {
@@ -868,6 +912,7 @@ useEffect(() => {
       completedRecipeIds,
       inventoryByItemId,
       farmingSessionItemIds,
+      marketScope,
     }).catch(() => {
       setProgressSyncError(
         'No pudimos guardar el último cambio. Revisa tu conexión e inténtalo nuevamente.',
@@ -880,9 +925,96 @@ useEffect(() => {
   completedRecipeIds,
   inventoryByItemId,
   farmingSessionItemIds,
+  marketScope,
   currentUser?.uid,
   loadedProgressUserId,
   accessState.status,
+])
+
+useEffect(() => {
+  if (!isVendorShoppingOpen || marketLocations) {
+    return
+  }
+
+  let isActive = true
+
+  void Promise.resolve().then(() => {
+    if (!isActive) {
+      return
+    }
+
+    setMarketLocationsError(null)
+    return loadMarketLocations()
+      .then((locations) => {
+        if (isActive) {
+          setMarketLocations(locations)
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setMarketLocationsError(
+            'No pudimos cargar la lista de mundos y Data Centers.',
+          )
+        }
+      })
+  })
+
+  return () => {
+    isActive = false
+  }
+}, [isVendorShoppingOpen, marketLocations])
+
+useEffect(() => {
+  if (
+    !isVendorShoppingOpen ||
+    isLoadingVendorShopping ||
+    !marketScope ||
+    vendorShoppingItems.length === 0
+  ) {
+    return
+  }
+
+  let isActive = true
+
+  void Promise.resolve().then(() => {
+    if (!isActive) {
+      return
+    }
+
+    setIsLoadingMarketPrices(true)
+    setMarketPricesError(null)
+    return loadMarketPrices(
+      marketScope,
+      vendorShoppingItems.map((item) => item.material.itemId),
+    )
+      .then((prices) => {
+        if (isActive) {
+          setMarketPrices(Object.fromEntries(prices))
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setMarketPrices({})
+          setMarketPricesError(
+            'No pudimos cargar los precios de Market Board. Inténtalo nuevamente en unos minutos.',
+          )
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingMarketPrices(false)
+        }
+      })
+  })
+
+  return () => {
+    isActive = false
+  }
+}, [
+  isLoadingVendorShopping,
+  isVendorShoppingOpen,
+  marketScope,
+  vendorShoppingItems,
 ])
 
 useEffect(() => {
@@ -1184,8 +1316,79 @@ useEffect(() => {
           </div>
 
           <p className="vendor-shopping-description">
-            El coste es una estimación basada en el precio fijo de NPC. No incluye precios de mercado.
+            Compara precios fijos de NPC con el precio más barato actual de Market Board.
           </p>
+
+          <section className="market-board-settings" aria-label="Configuración de Market Board">
+            <div>
+              <p className="section-label">MARKET BOARD</p>
+              <h3>Tu mercado</h3>
+              <p>Esta preferencia se guarda solo en tu cuenta.</p>
+            </div>
+            <div className="market-board-controls">
+              <label>
+                Consultar por
+                <select
+                  value={marketScopeType}
+                  onChange={(event) => {
+                    const type = event.target.value as MarketScope['type']
+                    setMarketScopeType(type)
+                    setMarketScope(null)
+                    setMarketPrices({})
+                  }}
+                >
+                  <option value="world">Mundo</option>
+                  <option value="dataCenter">Data Center</option>
+                </select>
+              </label>
+              <label>
+                {marketScopeType === 'world' ? 'Mundo' : 'Data Center'}
+                <select
+                  value={
+                    marketScope?.type === marketScopeType
+                      ? marketScope.name
+                      : ''
+                  }
+                  disabled={!marketLocations}
+                  onChange={(event) =>
+                    setMarketScope(
+                      event.target.value
+                        ? { type: marketScopeType, name: event.target.value }
+                        : null,
+                    )
+                  }
+                >
+                  <option value="">
+                    {marketLocations ? 'Selecciona una opción' : 'Cargando opciones…'}
+                  </option>
+                  {(marketScopeType === 'world'
+                    ? marketLocations?.worlds
+                    : marketLocations?.dataCenters
+                  )?.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          {marketLocationsError && (
+            <p className="error-message">{marketLocationsError}</p>
+          )}
+
+          {marketScope && (
+            <p className="market-board-summary">
+              Market Board de {marketScope.name}: {isLoadingMarketPrices
+                ? 'consultando precios…'
+                : `${marketShoppingCost.toLocaleString()} gil estimados`}
+            </p>
+          )}
+
+          {marketPricesError && (
+            <p className="error-message">{marketPricesError}</p>
+          )}
 
           {isLoadingVendorShopping && (
             <div className="vendor-shopping-loading">
@@ -1229,6 +1432,11 @@ useEffect(() => {
           <div className="vendor-shopping-list">
             {vendorShoppingItems.map((item) => {
               const primaryVendor = item.vendors[0]
+              const marketPrice = marketPrices[item.material.itemId]?.pricePerUnit
+              const isMarketCheaper =
+                typeof marketPrice === 'number' &&
+                item.unitPrice !== null &&
+                marketPrice < item.unitPrice
 
               return (
                 <article key={item.material.itemId}>
@@ -1255,6 +1463,20 @@ useEffect(() => {
                       ? 'Precio unitario no confirmado'
                       : `${item.unitPrice.toLocaleString()} gil por unidad`}
                   </p>
+                  {marketScope && (
+                    <p className="market-item-price">
+                      {typeof marketPrice === 'number'
+                        ? `Market Board: ${marketPrice.toLocaleString()} gil por unidad · ${
+                            (marketPrice * item.quantity).toLocaleString()
+                          } gil total`
+                        : 'Market Board: sin precio actual disponible'}
+                      {typeof marketPrice === 'number' && item.unitPrice !== null
+                        ? isMarketCheaper
+                          ? ' · Market Board es más barato'
+                          : ' · NPC es más barato o igual'
+                        : ''}
+                    </p>
+                  )}
                   <div className="vendor-shopping-vendor">
                     <span>Vendedor recomendado</span>
                     <b>{primaryVendor.name}</b>

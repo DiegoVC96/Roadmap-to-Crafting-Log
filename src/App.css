@@ -1018,6 +1018,64 @@ h1 {
   color: #c3ced7;
 }
 
+.market-board-settings {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 15px;
+  border: 1px solid rgba(112, 152, 196, 0.62);
+  border-radius: 10px;
+  background: rgba(25, 51, 77, 0.5);
+}
+
+.market-board-settings h3 {
+  margin: 3px 0 4px;
+  color: #dcecff;
+  font-family: Georgia, serif;
+  font-size: 1.14rem;
+}
+
+.market-board-settings p:not(.section-label) {
+  margin: 0;
+  color: #becddd;
+  font-size: 0.88rem;
+}
+
+.market-board-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.market-board-controls label {
+  display: grid;
+  gap: 5px;
+  color: #d7e5f2;
+  font-size: 0.8rem;
+}
+
+.market-board-controls select {
+  min-width: 145px;
+  padding: 9px 10px;
+  border: 1px solid #7196b7;
+  border-radius: 8px;
+  color: #eef7ff;
+  background: rgba(7, 17, 28, 0.82);
+  font: inherit;
+}
+
+.market-board-summary {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(113, 167, 211, 0.48);
+  border-radius: 8px;
+  color: #d7eaff;
+  background: rgba(26, 56, 83, 0.44);
+}
+
 .vendor-shopping-loading {
   display: grid;
   gap: 10px;
@@ -1082,6 +1140,12 @@ h1 {
 
 .vendor-shopping-unit-price {
   margin: 9px 0 11px;
+}
+
+.market-item-price {
+  margin: -3px 0 11px;
+  color: #cbdaf0;
+  font-size: 0.88rem;
 }
 
 .vendor-shopping-vendor {
@@ -2013,6 +2077,24 @@ button:focus-visible {
 
   .vendor-shopping-heading > strong {
     text-align: left;
+  }
+
+  .market-board-settings {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .market-board-controls {
+    justify-content: stretch;
+  }
+
+  .market-board-controls label {
+    flex: 1;
+  }
+
+  .market-board-controls select {
+    min-width: 0;
+    width: 100%;
   }
 
   .vendor-shopping-vendor {
