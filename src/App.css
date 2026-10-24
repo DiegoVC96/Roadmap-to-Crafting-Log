@@ -575,6 +575,7 @@ h1 {
 
 .recipe-material-button,
 .recipe-tree-button,
+.recipe-cost-button,
 .close-panel-button {
   padding: 7px 10px;
   border: 1px solid #4e5c70;
@@ -588,6 +589,7 @@ h1 {
 
 .recipe-material-button:hover,
 .recipe-tree-button:hover,
+.recipe-cost-button:hover,
 .close-panel-button:hover {
   border-color: #e7b85a;
   color: #fff3cf;
@@ -602,6 +604,17 @@ h1 {
 .recipe-tree-button:hover {
   border-color: #b5d7f8;
   color: #f0f8ff;
+}
+
+.recipe-cost-button {
+  border-color: #b086c9;
+  color: #f0dcff;
+  background: #48345e;
+}
+
+.recipe-cost-button:hover {
+  border-color: #dfb9ff;
+  color: #fff4ff;
 }
 
 .crafting-tree-button {
@@ -985,6 +998,22 @@ h1 {
   background: rgba(55, 122, 91, 0.82);
 }
 
+.smart-plan-button {
+  padding: 8px 10px;
+  border: 1px solid rgba(183, 143, 220, 0.8);
+  border-radius: 8px;
+  color: #f0dfff;
+  background: rgba(87, 57, 117, 0.72);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.smart-plan-button:hover {
+  border-color: #e1c4ff;
+  background: rgba(111, 72, 149, 0.86);
+}
+
 .vendor-shopping-page {
   margin-bottom: 28px;
   padding: 28px;
@@ -1170,6 +1199,103 @@ h1 {
 
 .vendor-shopping-vendor small {
   color: #c0d0c8;
+}
+
+.recipe-cost-page,
+.smart-plan-page {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid #68718f;
+  border-radius: 18px;
+  background: rgba(21, 25, 46, 0.92);
+}
+
+.recipe-cost-heading {
+  margin: 20px 0 16px;
+}
+
+.recipe-cost-heading h2 {
+  margin: 2px 0 5px;
+  color: #f7d98d;
+  font-family: Georgia, serif;
+  font-size: 1.6rem;
+}
+
+.recipe-cost-heading p:not(.section-label) {
+  margin: 0;
+  color: #c9d3e2;
+}
+
+.recipe-cost-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.recipe-cost-summary div {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid rgba(128, 144, 196, 0.62);
+  border-radius: 11px;
+  background: rgba(31, 36, 65, 0.64);
+}
+
+.recipe-cost-summary span {
+  color: #cad4eb;
+  font-size: 0.87rem;
+}
+
+.recipe-cost-summary strong {
+  color: #bce8a5;
+  font-size: 1.2rem;
+}
+
+.smart-plan-group {
+  margin-top: 20px;
+}
+
+.smart-plan-group h3 {
+  margin: 0 0 9px;
+  color: #ebd39a;
+  font-family: Georgia, serif;
+  font-size: 1.16rem;
+}
+
+.smart-plan-list {
+  display: grid;
+  gap: 9px;
+}
+
+.smart-plan-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(103, 119, 158, 0.62);
+  border-radius: 10px;
+  background: rgba(15, 21, 41, 0.65);
+}
+
+.smart-plan-list h3,
+.smart-plan-list h4 {
+  margin: 0 0 4px;
+  color: #edf2ff;
+  font-size: 1rem;
+}
+
+.smart-plan-list p {
+  margin: 0;
+  color: #bdcbe0;
+  font-size: 0.86rem;
+}
+
+.smart-plan-list > article > strong {
+  color: #f4ce79;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .materials-roadmap-description {
@@ -2070,6 +2196,11 @@ button:focus-visible {
     padding: 18px;
   }
 
+  .recipe-cost-page,
+  .smart-plan-page {
+    padding: 18px;
+  }
+
   .vendor-shopping-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -2100,6 +2231,10 @@ button:focus-visible {
   .vendor-shopping-vendor {
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+
+  .recipe-cost-summary {
+    grid-template-columns: 1fr;
   }
 
   .materials-summary-list {
@@ -2145,7 +2280,8 @@ button:focus-visible {
 
   .recipe-row small,
   .recipe-material-button,
-  .recipe-tree-button {
+  .recipe-tree-button,
+  .recipe-cost-button {
     grid-column: 2;
   }
 
@@ -2205,6 +2341,21 @@ button:focus-visible {
   .recipe-material-button {
     width: 100%;
     min-height: 40px;
+  }
+
+  .recipe-tree-button,
+  .recipe-cost-button {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .smart-plan-list article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .smart-plan-list > article > strong {
+    grid-column: 2;
+    text-align: left;
   }
 
   .ingredient-actions {

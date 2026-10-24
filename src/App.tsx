@@ -53,6 +53,98 @@ type VendorShoppingItem = {
   unitPrice: number | null
 }
 
+type AcquisitionMaterial = Pick<
+  RecipeIngredient,
+  'itemId' | 'name' | 'iconPath' | 'quantity'
+>
+
+type SmartPlanItem = {
+  material: AcquisitionMaterial
+  method: 'gather' | 'npc' | 'market' | 'unknown'
+  source: ItemSource | null
+  unitCost: number | null
+  marketPrice: number | null
+}
+
+function collectBaseMaterials(
+  node: CraftingTreeNode,
+  materials = new Map<number, AcquisitionMaterial>(),
+) {
+  if (node.children.length === 0 && node.crafts === null) {
+    const current = materials.get(node.itemId)
+    materials.set(node.itemId, {
+      itemId: node.itemId,
+      name: node.name,
+      iconPath: node.iconPath,
+      quantity: (current?.quantity ?? 0) + node.quantity,
+    })
+    return materials
+  }
+
+  for (const child of node.children) {
+    collectBaseMaterials(child, materials)
+  }
+
+  return materials
+}
+
+function chooseSmartMethod(
+  material: AcquisitionMaterial,
+  sources: ItemSource[],
+  marketPrice: number | null,
+): SmartPlanItem {
+  const gatheringSource = sources.find(
+    (source) =>
+      source.kind === 'gathering' ||
+      source.kind === 'mob' ||
+      source.kind === 'quest',
+  )
+  const vendorSource = sources.find(
+    (source) => source.kind === 'vendor' && typeof source.price === 'number',
+  )
+
+  if (gatheringSource) {
+    return {
+      material,
+      method: 'gather',
+      source: gatheringSource,
+      unitCost: 0,
+      marketPrice,
+    }
+  }
+
+  if (
+    marketPrice !== null &&
+    (!vendorSource || marketPrice < (vendorSource.price ?? Number.MAX_SAFE_INTEGER))
+  ) {
+    return {
+      material,
+      method: 'market',
+      source: null,
+      unitCost: marketPrice,
+      marketPrice,
+    }
+  }
+
+  if (vendorSource) {
+    return {
+      material,
+      method: 'npc',
+      source: vendorSource,
+      unitCost: vendorSource.price ?? null,
+      marketPrice,
+    }
+  }
+
+  return {
+    material,
+    method: 'unknown',
+    source: null,
+    unitCost: null,
+    marketPrice,
+  }
+}
+
 const crafters: Crafter[] = [
   {
     id: 'Carpenter',
@@ -181,6 +273,17 @@ function App() {
     total: 0,
   })
   const [vendorShoppingError, setVendorShoppingError] = useState<string | null>(null)
+  const [isSmartPlanOpen, setIsSmartPlanOpen] = useState(false)
+  const [smartPlanItems, setSmartPlanItems] = useState<SmartPlanItem[]>([])
+  const [isLoadingSmartPlan, setIsLoadingSmartPlan] = useState(false)
+  const [smartPlanProgress, setSmartPlanProgress] = useState({ current: 0, total: 0 })
+  const [smartPlanError, setSmartPlanError] = useState<string | null>(null)
+  const [isRecipeCostOpen, setIsRecipeCostOpen] = useState(false)
+  const [selectedCostRecipe, setSelectedCostRecipe] = useState<FfxivRecipe | null>(null)
+  const [recipeCostItems, setRecipeCostItems] = useState<SmartPlanItem[]>([])
+  const [recipeMarketPrice, setRecipeMarketPrice] = useState<number | null>(null)
+  const [isLoadingRecipeCost, setIsLoadingRecipeCost] = useState(false)
+  const [recipeCostError, setRecipeCostError] = useState<string | null>(null)
   const [marketScope, setMarketScope] = useState<MarketScope | null>(null)
   const [marketScopeType, setMarketScopeType] = useState<
     MarketScope['type']
@@ -722,6 +825,115 @@ function openVendorShoppingList() {
   }
 
   void loadVendorShoppingList()
+}
+
+async function buildSmartPlan(
+  materials: AcquisitionMaterial[],
+  onProgress: (current: number, total: number) => void,
+) {
+  const sourcesByItemId = new Map<number, ItemSource[]>()
+  const batchSize = 6
+  let checkedMaterials = 0
+
+  for (let index = 0; index < materials.length; index += batchSize) {
+    const batch = materials.slice(index, index + batchSize)
+
+    await Promise.all(
+      batch.map(async (material) => {
+        try {
+          sourcesByItemId.set(material.itemId, await loadItemSources(material.itemId))
+        } catch {
+          sourcesByItemId.set(material.itemId, [])
+        } finally {
+          checkedMaterials += 1
+        }
+      }),
+    )
+    onProgress(checkedMaterials, materials.length)
+  }
+
+  const marketPricesByItemId = marketScope
+    ? await loadMarketPrices(
+        marketScope,
+        materials.map((material) => material.itemId),
+      )
+    : new Map<number, MarketPrice>()
+
+  return materials
+    .map((material) =>
+      chooseSmartMethod(
+        material,
+        sourcesByItemId.get(material.itemId) ?? [],
+        marketPricesByItemId.get(material.itemId)?.pricePerUnit ?? null,
+      ),
+    )
+    .sort(
+      (first, second) =>
+        first.method.localeCompare(second.method) ||
+        second.material.quantity - first.material.quantity ||
+        first.material.name.localeCompare(second.material.name),
+    )
+}
+
+function openSmartPlan() {
+  const materials = materialTotals
+    .map((material) => ({
+      itemId: material.itemId,
+      name: material.name,
+      iconPath: material.iconPath,
+      quantity: Math.max(
+        material.quantity - (inventoryByItemId[String(material.itemId)] ?? 0),
+        0,
+      ),
+    }))
+    .filter((material) => material.quantity > 0)
+
+  setIsSmartPlanOpen(true)
+  setSmartPlanItems([])
+  setSmartPlanError(null)
+  setSmartPlanProgress({ current: 0, total: materials.length })
+  setIsLoadingSmartPlan(true)
+
+  void buildSmartPlan(materials, (current, total) =>
+    setSmartPlanProgress({ current, total }),
+  )
+    .then((items) => setSmartPlanItems(items))
+    .catch(() =>
+      setSmartPlanError(
+        'No pudimos crear el plan inteligente. Revisa tu conexión e inténtalo nuevamente.',
+      ),
+    )
+    .finally(() => setIsLoadingSmartPlan(false))
+}
+
+function openRecipeCostComparison(recipe: FfxivRecipe) {
+  const crafts = recipeCraftTotals.get(recipe.id) ?? 0
+  const tree = buildCraftingTree(recipe, recipes, Math.max(crafts, 1))
+  const materials = [...collectBaseMaterials(tree).values()]
+
+  setIsRecipeCostOpen(true)
+  setSelectedCostRecipe(recipe)
+  setRecipeCostItems([])
+  setRecipeMarketPrice(null)
+  setRecipeCostError(null)
+  setIsLoadingRecipeCost(true)
+
+  void Promise.all([
+    buildSmartPlan(materials, () => undefined),
+    marketScope
+      ? loadMarketPrices(marketScope, [recipe.resultItemId])
+      : Promise.resolve(new Map<number, MarketPrice>()),
+  ])
+    .then(([items, prices]) => {
+      setRecipeCostItems(items)
+      setRecipeMarketPrice(prices.get(recipe.resultItemId)?.pricePerUnit ?? null)
+    })
+    .catch(() =>
+      setRecipeCostError(
+        'No pudimos calcular el coste de esta receta. Revisa tu conexión e inténtalo nuevamente.',
+      ),
+    )
+    .finally(() => setIsLoadingRecipeCost(false))
 }
 
 function openMaterialTotal(materialId: number) {
@@ -1279,6 +1491,144 @@ useEffect(() => {
   )
 }
 
+  if (isRecipeCostOpen && selectedCostRecipe) {
+    const crafts = recipeCraftTotals.get(selectedCostRecipe.id) ?? 0
+    const comparisonCrafts = Math.max(crafts, 1)
+    const craftingCost = recipeCostItems.reduce(
+      (total, item) => total + (item.unitCost ?? 0) * item.material.quantity,
+      0,
+    )
+    const itemsWithoutCost = recipeCostItems.filter(
+      (item) => item.unitCost === null,
+    ).length
+    const resultPurchaseCost = recipeMarketPrice
+      ? recipeMarketPrice * comparisonCrafts
+      : null
+
+    return (
+      <main className="app">
+        <header className="hero">
+          <p className="eyebrow">FINAL FANTASY XIV</p>
+          <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
+          <h1>Fabricar vs. comprar</h1>
+          <p className="subtitle">Comparación de coste estimado para {selectedCostRecipe.name}.</p>
+          <AccountActions user={currentUser} />
+        </header>
+        <section className="recipe-cost-page">
+          <button className="back-to-materials-button" type="button" onClick={() => setIsRecipeCostOpen(false)}>
+            ← Volver al crafting log
+          </button>
+          <div className="recipe-cost-heading">
+            <div>
+              <p className="section-label">COMPARADOR DE COSTES</p>
+              <h2>{selectedCostRecipe.name}</h2>
+              <p>Objetivo: fabricar ×{comparisonCrafts.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {!marketScope && (
+            <p className="vendor-shopping-note">
+              Configura tu Mundo o Data Center en “Lista de vendedores” para comparar con Market Board.
+            </p>
+          )}
+          {isLoadingRecipeCost && <p className="empty-state">Calculando componentes y precios…</p>}
+          {recipeCostError && <p className="error-message">{recipeCostError}</p>}
+          {!isLoadingRecipeCost && !recipeCostError && (
+            <>
+              <div className="recipe-cost-summary">
+                <div>
+                  <span>Fabricar con el plan más barato</span>
+                  <strong>{craftingCost.toLocaleString()} gil</strong>
+                </div>
+                <div>
+                  <span>Comprar el resultado en Market Board</span>
+                  <strong>{resultPurchaseCost === null ? 'Sin precio' : `${resultPurchaseCost.toLocaleString()} gil`}</strong>
+                </div>
+              </div>
+              {itemsWithoutCost > 0 && (
+                <p className="vendor-shopping-note">
+                  {itemsWithoutCost} componentes no tienen precio confirmado y no se suman al coste.
+                </p>
+              )}
+              <div className="smart-plan-list">
+                {recipeCostItems.map((item) => (
+                  <article key={item.material.itemId}>
+                    {item.material.iconPath && <img className="game-icon" src={getIconUrl(item.material.iconPath)} alt="" />}
+                    <div>
+                      <h3>{item.material.name} ×{item.material.quantity.toLocaleString()}</h3>
+                      <p>{item.method === 'gather' ? 'Recolectar / obtener gratis' : item.method === 'npc' ? `Comprar a ${item.source?.name}` : item.method === 'market' ? 'Comprar en Market Board' : 'Sin fuente con precio'}</p>
+                    </div>
+                    <strong>{item.unitCost === null ? '—' : `${(item.unitCost * item.material.quantity).toLocaleString()} gil`}</strong>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      </main>
+    )
+  }
+
+  if (isSmartPlanOpen) {
+    const methodLabels = {
+      gather: 'Recolectar u obtener',
+      npc: 'Comprar a NPC',
+      market: 'Comprar en Market Board',
+      unknown: 'Sin recomendación disponible',
+    }
+    const smartPlanCost = smartPlanItems.reduce(
+      (total, item) => total + (item.unitCost ?? 0) * item.material.quantity,
+      0,
+    )
+
+    return (
+      <main className="app">
+        <header className="hero">
+          <p className="eyebrow">FINAL FANTASY XIV</p>
+          <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
+          <h1>Plan de adquisición</h1>
+          <p className="subtitle">La opción recomendada para cada material pendiente.</p>
+          <AccountActions user={currentUser} />
+        </header>
+        <section className="smart-plan-page">
+          <button className="back-to-materials-button" type="button" onClick={() => setIsSmartPlanOpen(false)}>
+            ← Volver a materiales pendientes
+          </button>
+          <div className="vendor-shopping-heading">
+            <div>
+              <p className="section-label">LISTA INTELIGENTE</p>
+              <h2>Cómo conseguir tus materiales</h2>
+            </div>
+            <strong>{smartPlanCost.toLocaleString()} gil estimados</strong>
+          </div>
+          {!marketScope && <p className="vendor-shopping-note">Sin Mundo/Data Center configurado, las recomendaciones de Market Board no están disponibles.</p>}
+          {isLoadingSmartPlan && <p className="empty-state">Analizando fuentes: {smartPlanProgress.current} de {smartPlanProgress.total} materiales.</p>}
+          {smartPlanError && <p className="error-message">{smartPlanError}</p>}
+          {!isLoadingSmartPlan && !smartPlanError && (Object.keys(methodLabels) as Array<keyof typeof methodLabels>).map((method) => {
+            const items = smartPlanItems.filter((item) => item.method === method)
+            return items.length > 0 ? (
+              <section className="smart-plan-group" key={method}>
+                <h3>{methodLabels[method]} ({items.length})</h3>
+                <div className="smart-plan-list">
+                  {items.map((item) => (
+                    <article key={item.material.itemId}>
+                      {item.material.iconPath && <img className="game-icon" src={getIconUrl(item.material.iconPath)} alt="" />}
+                      <div>
+                        <h4>{item.material.name} ×{item.material.quantity.toLocaleString()}</h4>
+                        <p>{item.source ? `${item.source.name} · ${item.source.detail}${item.source.region ? ` · ${item.source.region}` : ''}` : item.method === 'market' ? `${item.marketPrice?.toLocaleString()} gil por unidad` : 'Sin fuente conocida'}</p>
+                      </div>
+                      <strong>{item.unitCost === null ? '—' : `${(item.unitCost * item.material.quantity).toLocaleString()} gil`}</strong>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null
+          })}
+        </section>
+      </main>
+    )
+  }
+
   if (isVendorShoppingOpen) {
     return (
       <main className="app">
@@ -1649,6 +1999,9 @@ if (isMaterialsRoadmapOpen) {
               onClick={openVendorShoppingList}
             >
               Lista de vendedores
+            </button>
+            <button className="smart-plan-button" type="button" onClick={openSmartPlan}>
+              Plan inteligente
             </button>
           </div>
         </div>
@@ -2128,6 +2481,14 @@ if (isMaterialsRoadmapOpen) {
             onClick={() => openCraftingTree(recipe)}
           >
             Árbol
+          </button>
+
+          <button
+            className="recipe-cost-button"
+            type="button"
+            onClick={() => openRecipeCostComparison(recipe)}
+          >
+            Costes
           </button>
         </div>
 
