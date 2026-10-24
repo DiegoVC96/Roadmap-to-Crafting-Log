@@ -13,6 +13,16 @@ export type BaseMaterialTotal = RecipeIngredient & {
   breakdown: MaterialBreakdownEntry[]
 }
 
+export type CraftingTreeNode = {
+  itemId: number
+  name: string
+  iconPath: string | null
+  quantity: number
+  crafts: number | null
+  crafter: FfxivRecipe['crafter'] | null
+  children: CraftingTreeNode[]
+}
+
 function chooseCraftingRecipe(recipes: FfxivRecipe[]) {
   return [...recipes].sort(
     (first, second) =>
@@ -101,6 +111,77 @@ export function calculateRecipeCraftTotals(
   }
 
   return craftTotals
+}
+
+/** Construye la cadena de componentes para una receta y su cantidad objetivo. */
+export function buildCraftingTree(
+  rootRecipe: FfxivRecipe,
+  recipes: FfxivRecipe[],
+  crafts = 1,
+) {
+  const producersByItem = new Map<number, FfxivRecipe[]>()
+
+  for (const recipe of recipes) {
+    const producers = producersByItem.get(recipe.resultItemId) ?? []
+    producers.push(recipe)
+    producersByItem.set(recipe.resultItemId, producers)
+  }
+
+  function buildIngredient(
+    ingredient: RecipeIngredient,
+    quantity: number,
+    ancestors: Set<number>,
+  ): CraftingTreeNode {
+    const recipe = chooseCraftingRecipe(
+      producersByItem.get(ingredient.itemId) ?? [],
+    )
+
+    if (!recipe || ancestors.has(ingredient.itemId)) {
+      return {
+        itemId: ingredient.itemId,
+        name: ingredient.name,
+        iconPath: ingredient.iconPath,
+        quantity,
+        crafts: null,
+        crafter: null,
+        children: [],
+      }
+    }
+
+    const requiredCrafts = Math.ceil(quantity / (recipe.resultAmount || 1))
+    const nextAncestors = new Set(ancestors).add(ingredient.itemId)
+
+    return {
+      itemId: ingredient.itemId,
+      name: ingredient.name,
+      iconPath: ingredient.iconPath,
+      quantity,
+      crafts: requiredCrafts,
+      crafter: recipe.crafter,
+      children: recipe.ingredients.map((child) =>
+        buildIngredient(child, child.quantity * requiredCrafts, nextAncestors),
+      ),
+    }
+  }
+
+  const rootIngredient: RecipeIngredient = {
+    itemId: rootRecipe.resultItemId,
+    name: rootRecipe.name,
+    iconPath: rootRecipe.iconPath,
+    quantity: rootRecipe.resultAmount * crafts,
+  }
+
+  return {
+    itemId: rootRecipe.resultItemId,
+    name: rootRecipe.name,
+    iconPath: rootRecipe.iconPath,
+    quantity: rootIngredient.quantity,
+    crafts,
+    crafter: rootRecipe.crafter,
+    children: rootRecipe.ingredients.map((ingredient) =>
+      buildIngredient(ingredient, ingredient.quantity * crafts, new Set()),
+    ),
+  } satisfies CraftingTreeNode
 }
 
 /**

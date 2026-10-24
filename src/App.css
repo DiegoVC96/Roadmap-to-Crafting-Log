@@ -544,7 +544,7 @@ h1 {
 }
 
 .recipe-row {
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
 }
 
 .recipe-check {
@@ -574,6 +574,7 @@ h1 {
 }
 
 .recipe-material-button,
+.recipe-tree-button,
 .close-panel-button {
   padding: 7px 10px;
   border: 1px solid #4e5c70;
@@ -586,9 +587,188 @@ h1 {
 }
 
 .recipe-material-button:hover,
+.recipe-tree-button:hover,
 .close-panel-button:hover {
   border-color: #e7b85a;
   color: #fff3cf;
+}
+
+.recipe-tree-button {
+  border-color: #6f86a5;
+  color: #dceaff;
+  background: #2d415a;
+}
+
+.recipe-tree-button:hover {
+  border-color: #b5d7f8;
+  color: #f0f8ff;
+}
+
+.crafting-tree-button {
+  display: block;
+  width: min(100%, 360px);
+  margin: 10px auto 0;
+  padding: 12px 18px;
+  border: 1px solid #83a8c6;
+  border-radius: 10px;
+  color: #e7f3ff;
+  background: linear-gradient(135deg, #315d82, #254461);
+  box-shadow: inset 0 1px 0 rgba(230, 246, 255, 0.12);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.crafting-tree-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: #c4e3fa;
+  background: linear-gradient(135deg, #3d719c, #2c5275);
+}
+
+.crafting-tree-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.crafting-tree-page {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid #59778f;
+  border-radius: 18px;
+  background: rgba(18, 32, 46, 0.9);
+}
+
+.crafting-tree-heading,
+.crafting-tree-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.crafting-tree-heading {
+  margin: 20px 0 16px;
+}
+
+.crafting-tree-heading h2,
+.crafting-tree-summary h3 {
+  margin: 2px 0 0;
+  color: #f7d98d;
+  font-family: Georgia, serif;
+}
+
+.tree-change-recipe-button {
+  padding: 9px 12px;
+  border: 1px solid #6f86a5;
+  border-radius: 8px;
+  color: #e1efff;
+  background: rgba(38, 67, 94, 0.8);
+  cursor: pointer;
+  font: inherit;
+}
+
+.crafting-tree-recipe-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 9px;
+}
+
+.crafting-tree-recipe-list button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #3b5369;
+  border-radius: 9px;
+  color: #edf5fb;
+  background: rgba(7, 15, 23, 0.58);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.crafting-tree-recipe-list button:hover {
+  border-color: #e7b85a;
+  background: rgba(51, 49, 34, 0.78);
+}
+
+.crafting-tree-recipe-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crafting-tree-recipe-list small {
+  grid-column: 2;
+  color: #aebdcb;
+}
+
+.crafting-tree-panel {
+  padding: 18px;
+  border: 1px solid rgba(231, 184, 90, 0.48);
+  border-radius: 13px;
+  background: rgba(10, 21, 29, 0.55);
+}
+
+.crafting-tree-summary {
+  margin-bottom: 16px;
+}
+
+.crafting-tree-summary strong {
+  color: #f4ce79;
+}
+
+.crafting-tree-list,
+.crafting-tree-list ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crafting-tree-list ul {
+  margin: 10px 0 0 22px;
+  padding-left: 14px;
+  border-left: 2px solid rgba(99, 142, 170, 0.55);
+}
+
+.crafting-tree-node-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid rgba(74, 107, 130, 0.8);
+  border-radius: 9px;
+  background: rgba(20, 38, 51, 0.7);
+}
+
+.crafting-tree-root > .crafting-tree-node-card {
+  border-color: rgba(231, 184, 90, 0.72);
+  background: linear-gradient(135deg, rgba(76, 57, 29, 0.76), rgba(26, 45, 57, 0.86));
+}
+
+.crafting-tree-node-card div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crafting-tree-node-card strong {
+  overflow: hidden;
+  color: #edf5ec;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crafting-tree-node-card small {
+  color: #b4c4d1;
+}
+
+.crafting-tree-node-card b {
+  color: #f4ce79;
 }
 
 .ingredient-panel {
@@ -1642,7 +1822,8 @@ button:focus-visible {
 
   .hero .load-button,
   .hero .reset-button,
-  .hero .materials-roadmap-button {
+  .hero .materials-roadmap-button,
+  .hero .crafting-tree-button {
     width: min(100%, 360px);
     min-height: 44px;
     margin: 6px auto;
@@ -1651,6 +1832,8 @@ button:focus-visible {
   .overall-progress,
   .recipe-panel,
   .materials-roadmap,
+  .crafting-tree-page,
+  .crafting-tree-panel,
   .material-guide-heading,
   .material-guide-sources {
     padding: 18px;
@@ -1663,6 +1846,16 @@ button:focus-visible {
   .materials-roadmap-heading {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .crafting-tree-heading,
+  .crafting-tree-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tree-change-recipe-button {
+    min-height: 42px;
   }
 
   .materials-roadmap-actions {
@@ -1705,6 +1898,16 @@ button:focus-visible {
   .filter-buttons {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .recipe-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .recipe-row small,
+  .recipe-material-button,
+  .recipe-tree-button {
+    grid-column: 2;
   }
 
   .ingredient-panel-heading {

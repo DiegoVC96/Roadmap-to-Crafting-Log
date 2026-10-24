@@ -22,9 +22,11 @@ import {
 } from './data/ffxivApi'
 import { loadItemSources, type ItemSource } from './data/itemSources'
 import {
+  buildCraftingTree,
   calculateBaseMaterialTotals,
   calculateRecipeCraftTotals,
   type BaseMaterialTotal,
+  type CraftingTreeNode,
 } from './data/materialRoadmap'
 import {
   readRecipeCatalog,
@@ -72,6 +74,43 @@ const crafters: Crafter[] = [
   },
 ]
 
+function CraftingTreeNodeView({
+  node,
+  isRoot = false,
+}: {
+  node: CraftingTreeNode
+  isRoot?: boolean
+}) {
+  return (
+    <li className={`crafting-tree-node ${isRoot ? 'crafting-tree-root' : ''}`}>
+      <div className="crafting-tree-node-card">
+        {node.iconPath ? (
+          <img className="game-icon" src={getIconUrl(node.iconPath)} alt="" />
+        ) : null}
+        <div>
+          <strong>{node.name}</strong>
+          <small>
+            {node.crafts === null
+              ? 'Material base · reunir, comprar o conseguir'
+              : `${node.crafter} · fabricar ×${node.crafts.toLocaleString()}`}
+          </small>
+        </div>
+        <b>×{node.quantity.toLocaleString()}</b>
+      </div>
+      {node.children.length > 0 && (
+        <ul>
+          {node.children.map((child, index) => (
+            <CraftingTreeNodeView
+              key={`${child.itemId}-${index}`}
+              node={child}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -104,6 +143,10 @@ function App() {
   >('all')
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
+  const [isCraftingTreeOpen, setIsCraftingTreeOpen] = useState(false)
+  const [selectedCraftingTreeRecipe, setSelectedCraftingTreeRecipe] =
+    useState<FfxivRecipe | null>(null)
+  const [craftingTreeSearchText, setCraftingTreeSearchText] = useState('')
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<number | null>(null)
   const [selectedMaterialSource, setSelectedMaterialSource] =
     useState<BaseMaterialTotal | null>(null)
@@ -203,6 +246,31 @@ const materialTotals = useMemo(() => {
 const recipeCraftTotals = useMemo(
   () => calculateRecipeCraftTotals(recipes, completedRecipeIds),
   [recipes, completedRecipeIds],
+)
+
+const craftingTreeSearchResults = useMemo(() => {
+  const normalizedSearch = craftingTreeSearchText.trim().toLocaleLowerCase()
+
+  return recipes
+    .filter((recipe) =>
+      recipe.name.toLocaleLowerCase().includes(normalizedSearch),
+    )
+    .slice(0, 60)
+}, [craftingTreeSearchText, recipes])
+
+const selectedCraftingTreeCrafts = selectedCraftingTreeRecipe
+  ? recipeCraftTotals.get(selectedCraftingTreeRecipe.id) ?? 0
+  : 0
+const selectedCraftingTree = useMemo(
+  () =>
+    selectedCraftingTreeRecipe && selectedCraftingTreeCrafts > 0
+      ? buildCraftingTree(
+          selectedCraftingTreeRecipe,
+          recipes,
+          selectedCraftingTreeCrafts,
+        )
+      : null,
+  [recipes, selectedCraftingTreeCrafts, selectedCraftingTreeRecipe],
 )
 
 const materialCollectionSummary = useMemo(() => {
@@ -497,6 +565,14 @@ function openCraftingRecipe(recipe: FfxivRecipe) {
   setLevelFilter('all')
   setHighlightedRecipeId(recipe.id)
   void handleOpenIngredients(recipe)
+}
+
+function openCraftingTree(recipe: FfxivRecipe | null = null) {
+  setIsItemSourcesPageOpen(false)
+  setIsMaterialsRoadmapOpen(false)
+  setSelectedCraftingTreeRecipe(recipe)
+  setCraftingTreeSearchText('')
+  setIsCraftingTreeOpen(true)
 }
 
 function openMaterialTotal(materialId: number) {
@@ -964,6 +1040,103 @@ useEffect(() => {
   )
 }
 
+  if (isCraftingTreeOpen) {
+    return (
+      <main className="app">
+        <header className="hero">
+          <p className="eyebrow">FINAL FANTASY XIV</p>
+          <img
+            className="app-logo"
+            src={appLogo}
+            alt="Emblema de Roadmap to Crafting Log"
+          />
+          <h1>Árbol de fabricación</h1>
+          <p className="subtitle">
+            Explora las recetas intermedias y los materiales base de cada objetivo.
+          </p>
+          <AccountActions user={currentUser} />
+        </header>
+
+        <section className="crafting-tree-page">
+          <button
+            className="back-to-materials-button"
+            type="button"
+            onClick={() => setIsCraftingTreeOpen(false)}
+          >
+            ← Volver al crafting log
+          </button>
+
+          <div className="crafting-tree-heading">
+            <div>
+              <p className="section-label">PLANIFICADOR DE CRAFTEO</p>
+              <h2>Selecciona una receta</h2>
+            </div>
+            {selectedCraftingTreeRecipe && (
+              <button
+                className="tree-change-recipe-button"
+                type="button"
+                onClick={() => setSelectedCraftingTreeRecipe(null)}
+              >
+                Cambiar receta
+              </button>
+            )}
+          </div>
+
+          {!selectedCraftingTreeRecipe && (
+            <>
+              <input
+                className="material-search"
+                type="search"
+                value={craftingTreeSearchText}
+                onChange={(event) => setCraftingTreeSearchText(event.target.value)}
+                placeholder="Buscar receta, por ejemplo: Maple Lumber"
+                aria-label="Buscar receta para el árbol de fabricación"
+              />
+              <div className="crafting-tree-recipe-list">
+                {craftingTreeSearchResults.map((recipe) => (
+                  <button
+                    key={recipe.id}
+                    type="button"
+                    onClick={() => setSelectedCraftingTreeRecipe(recipe)}
+                  >
+                    {recipe.iconPath ? (
+                      <img className="game-icon" src={getIconUrl(recipe.iconPath)} alt="" />
+                    ) : null}
+                    <span>{recipe.name}</span>
+                    <small>{recipe.crafter}</small>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {selectedCraftingTreeRecipe && selectedCraftingTree && (
+            <section className="crafting-tree-panel">
+              <div className="crafting-tree-summary">
+                <div>
+                  <p className="section-label">RECETA OBJETIVO</p>
+                  <h3>{selectedCraftingTreeRecipe.name}</h3>
+                </div>
+                <strong>
+                  Fabricar ×{selectedCraftingTreeCrafts.toLocaleString()}
+                </strong>
+              </div>
+              <ul className="crafting-tree-list">
+                <CraftingTreeNodeView node={selectedCraftingTree} isRoot />
+              </ul>
+            </section>
+          )}
+
+          {selectedCraftingTreeRecipe && !selectedCraftingTree && (
+            <p className="empty-state">
+              No necesitas fabricar esta receta para completar los logs pendientes.
+            </p>
+          )}
+        </section>
+      </main>
+    )
+  }
+
 if (isMaterialsRoadmapOpen) {
   return (
     <main className="app">
@@ -1231,6 +1404,15 @@ if (isMaterialsRoadmapOpen) {
           >
           {`Ver materiales pendientes (${materialTotals.length})`}
         </button>
+
+        <button
+          className="crafting-tree-button"
+          type="button"
+          onClick={() => openCraftingTree()}
+          disabled={!hasLoadedRecipes}
+        >
+          Ver árbol de fabricación
+        </button>
       </header>
 
       {accessState.isAdmin && <AdminAccessPanel adminUserId={currentUser.uid} />}
@@ -1474,6 +1656,14 @@ if (isMaterialsRoadmapOpen) {
             onClick={() => handleOpenIngredients(recipe)}
           >
             Materiales
+          </button>
+
+          <button
+            className="recipe-tree-button"
+            type="button"
+            onClick={() => openCraftingTree(recipe)}
+          >
+            Árbol
           </button>
         </div>
 
