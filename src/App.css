@@ -671,8 +671,36 @@ h1 {
   font-size: 1.6rem;
 }
 
-.materials-roadmap-heading > strong {
+.materials-roadmap-heading > strong,
+.materials-roadmap-actions > strong {
   color: #f4ce79;
+}
+
+.materials-roadmap-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.inventory-reset-button {
+  padding: 8px 10px;
+  border: 1px solid rgba(201, 117, 128, 0.76);
+  border-radius: 8px;
+  color: #ffe1e4;
+  background: rgba(131, 53, 63, 0.28);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.inventory-reset-button:hover:not(:disabled) {
+  border-color: #ffc0c8;
+  background: rgba(161, 61, 74, 0.5);
+}
+
+.inventory-reset-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .materials-roadmap-description {
@@ -1501,6 +1529,11 @@ button:focus-visible {
   .materials-roadmap-heading {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .materials-roadmap-actions {
+    justify-content: space-between;
+    width: 100%;
   }
 
   .materials-summary-list {

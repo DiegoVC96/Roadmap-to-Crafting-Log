@@ -302,6 +302,16 @@ function resetProgress() {
   }
 }
 
+function resetInventory() {
+  const shouldReset = window.confirm(
+    '¿Quieres borrar todas las cantidades registradas en tu inventario? Tus recetas completadas no se modificarán.',
+  )
+
+  if (shouldReset) {
+    setInventoryByItemId({})
+  }
+}
+
 function updateInventory(itemId: number, value: string) {
   const parsedQuantity = Number(value)
   const quantity = Number.isFinite(parsedQuantity)
@@ -857,9 +867,19 @@ if (isMaterialsRoadmapOpen) {
             <h2>Necesitas reunir o fabricar</h2>
           </div>
 
-          <strong>
-            {visibleMaterialTotals.length} de {materialTotals.length} tipos
-          </strong>
+          <div className="materials-roadmap-actions">
+            <strong>
+              {visibleMaterialTotals.length} de {materialTotals.length} tipos
+            </strong>
+            <button
+              className="inventory-reset-button"
+              type="button"
+              onClick={resetInventory}
+              disabled={!Object.values(inventoryByItemId).some((quantity) => quantity > 0)}
+            >
+              Reiniciar inventario
+            </button>
+          </div>
         </div>
 
         <p className="materials-roadmap-description">
