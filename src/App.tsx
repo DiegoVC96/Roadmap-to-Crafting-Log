@@ -21,6 +21,7 @@ import {
   type RecipeIngredient,
 } from './data/ffxivApi'
 import { loadItemSources, type ItemSource } from './data/itemSources'
+import { calculateBaseMaterialTotals } from './data/materialRoadmap'
 import {
   readRecipeCatalog,
   saveRecipeCatalog,
@@ -143,28 +144,7 @@ const visibleSelectedRecipes = selectedRecipes.filter((recipe) => {
 })
 
 const materialTotals = useMemo(() => {
-  const totals = new Map<number, RecipeIngredient>()
-
-  for (const recipe of recipes) {
-    if (completedRecipeIds.includes(recipe.id)) {
-      continue
-    }
-
-    for (const ingredient of recipe.ingredients) {
-      const current = totals.get(ingredient.itemId)
-
-      totals.set(ingredient.itemId, {
-        ...ingredient,
-        quantity: (current?.quantity ?? 0) + ingredient.quantity,
-      })
-    }
-  }
-
-  return [...totals.values()].sort(
-    (firstMaterial, secondMaterial) =>
-      secondMaterial.quantity - firstMaterial.quantity ||
-      firstMaterial.name.localeCompare(secondMaterial.name),
-  )
+  return calculateBaseMaterialTotals(recipes, completedRecipeIds)
 }, [recipes, completedRecipeIds])
 
 const visibleMaterialTotals = materialTotals.filter((material) =>
@@ -660,7 +640,8 @@ if (isMaterialsRoadmapOpen) {
         </div>
 
         <p className="materials-roadmap-description">
-          Totales directos para completar una vez cada receta pendiente.
+          Totales expandidos para completar una vez cada receta pendiente.
+          Las recetas intermedias se convierten automáticamente en materiales base.
           Selecciona un material para ver cómo obtenerlo sin crafting.
         </p>
 

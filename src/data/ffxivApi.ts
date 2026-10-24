@@ -19,6 +19,7 @@ export type FfxivRecipe = {
   name: string
   crafter: CrafterId
   level: number | null
+  resultAmount: number
   ingredients: RecipeIngredient[]
 }
 
@@ -164,7 +165,7 @@ export async function loadRecipePage(after?: number) {
   url.searchParams.set('limit', '500')
   url.searchParams.set(
     'fields',
-    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
+    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
   )
 
   if (after !== undefined) {
@@ -212,6 +213,11 @@ if (!crafter || !recipeName || resultItemId === null) {
         level:
           readLevel(row.fields.RecipeLevelTable) ??
           readLevel(row.fields['RecipeLevelTable.ClassJobLevel']),
+        resultAmount:
+          typeof row.fields.AmountResult === 'number' &&
+          row.fields.AmountResult > 0
+            ? row.fields.AmountResult
+            : 1,
       },
     ]
   })
