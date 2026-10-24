@@ -4,13 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { auth } from '@/lib/firebase';
-import { getIconUrl, loadAllRecipes, type RecipeIngredient } from '@/lib/ffxiv-api';
+import { getIconUrl, loadAllRecipes } from '@/lib/ffxiv-api';
+import { calculateBaseMaterialTotals, type BaseMaterialTotal } from '@/lib/material-roadmap';
 import { loadUserProgress } from '@/lib/user-progress';
 
-type RequiredMaterial = RecipeIngredient & { total: number };
-
 export default function MaterialsScreen() {
-  const [materials, setMaterials] = useState<RequiredMaterial[]>([]);
+  const [materials, setMaterials] = useState<BaseMaterialTotal[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,19 +26,7 @@ export default function MaterialsScreen() {
     setIsLoading(true);
     try {
       const [recipes, completedIds] = await Promise.all([loadAllRecipes(), loadUserProgress(user.uid)]);
-      const completed = new Set(completedIds);
-      const totals = new Map<number, RequiredMaterial>();
-
-      recipes.filter((recipe) => !completed.has(recipe.id)).forEach((recipe) => {
-        recipe.ingredients.forEach((ingredient) => {
-          const existing = totals.get(ingredient.itemId);
-          totals.set(ingredient.itemId, existing
-            ? { ...existing, total: existing.total + ingredient.quantity }
-            : { ...ingredient, total: ingredient.quantity });
-        });
-      });
-
-      setMaterials([...totals.values()].sort((first, second) => second.total - first.total || first.name.localeCompare(second.name)));
+      setMaterials(calculateBaseMaterialTotals(recipes, completedIds));
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : 'No se pudieron calcular los materiales.');
     } finally {
@@ -64,7 +51,7 @@ export default function MaterialsScreen() {
     data={visibleMaterials}
     keyExtractor={(material) => String(material.itemId)}
     contentContainerStyle={styles.content}
-    ListHeaderComponent={<View><Text style={styles.title}>Materiales pendientes</Text><Text style={styles.subtitle}>Total directo de materiales para todas las recetas que aún no marcaste como completadas.</Text><TextInput value={search} onChangeText={setSearch} placeholder="Buscar material..." placeholderTextColor="#758598" style={styles.search} /><Text style={styles.count}>{visibleMaterials.length} tipos de material</Text></View>}
+    ListHeaderComponent={<View><Text style={styles.title}>Materiales base pendientes</Text><Text style={styles.subtitle}>Totales expandidos: las recetas intermedias se desarman automáticamente hasta llegar a materiales que debes obtener fuera del crafting.</Text><TextInput value={search} onChangeText={setSearch} placeholder="Buscar material..." placeholderTextColor="#758598" style={styles.search} /><Text style={styles.count}>{visibleMaterials.length} tipos de material</Text></View>}
     renderItem={({ item }) => <Pressable onPress={() => router.push(`/material-guide?itemId=${item.itemId}&name=${encodeURIComponent(item.name)}&total=${item.total}&iconPath=${encodeURIComponent(item.iconPath ?? '')}` as never)} style={styles.materialCard}>{item.iconPath ? <Image source={{ uri: getIconUrl(item.iconPath) }} style={styles.icon} /> : <View style={styles.iconFallback} />}<View style={styles.materialInfo}><Text style={styles.name}>{item.name}</Text><Text style={styles.detail}>Toca para ver cómo obtenerlo</Text></View><Text style={styles.total}>×{item.total.toLocaleString()}</Text></Pressable>}
     ListEmptyComponent={<Text style={styles.empty}>No encontramos materiales con esa búsqueda.</Text>}
   />;

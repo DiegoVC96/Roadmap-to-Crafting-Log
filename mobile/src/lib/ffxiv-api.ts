@@ -26,6 +26,7 @@ export type FfxivRecipe = {
   name: string;
   crafter: CrafterId;
   level: number | null;
+  resultAmount: number;
   ingredients: RecipeIngredient[];
 };
 
@@ -90,7 +91,7 @@ async function loadRecipePage(after?: number) {
   const url = new URL(apiUrl);
   url.searchParams.set('language', 'en');
   url.searchParams.set('limit', '500');
-  url.searchParams.set('fields', 'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,Ingredient[].Name,Ingredient[].Icon,AmountIngredient');
+  url.searchParams.set('fields', 'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,Ingredient[].Name,Ingredient[].Icon,AmountIngredient');
   if (after !== undefined) url.searchParams.set('after', String(after));
 
   const response = await fetch(url.toString());
@@ -107,6 +108,7 @@ async function loadRecipePage(after?: number) {
       id: `xiv-recipe-${row.row_id}`, rowId: row.row_id, resultItemId, name, crafter,
       iconPath: readIconPath(row.fields.ItemResult), ingredients: readIngredients(row.fields),
       level: readLevel(row.fields.RecipeLevelTable) ?? readLevel(row.fields['RecipeLevelTable.ClassJobLevel']),
+      resultAmount: typeof row.fields.AmountResult === 'number' && row.fields.AmountResult > 0 ? row.fields.AmountResult : 1,
     }];
   });
 
