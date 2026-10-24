@@ -3,7 +3,9 @@ import type { FfxivRecipe } from './ffxivApi'
 const databaseName = 'roadmap-to-crafting-log'
 const databaseVersion = 1
 const recipeStoreName = 'recipe-catalog'
-const recipeCatalogKey = 'all-recipes'
+// Cambiar la clave obliga a renovar catálogos guardados antes de incluir
+// AmountResult, necesario para expandir correctamente recetas intermedias.
+const recipeCatalogKey = 'all-recipes-v2'
 
 type StoredRecipeCatalog = {
   id: string

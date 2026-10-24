@@ -60,7 +60,10 @@ export function calculateBaseMaterialTotals(
       }
 
       const recipe = chooseCraftingRecipe(candidates)
-      const requiredCrafts = Math.ceil(material.quantity / recipe.resultAmount)
+      // Los catálogos creados por versiones anteriores no tenían este campo.
+      // La protección permite interpretarlos como una receta que produce una unidad.
+      const resultAmount = recipe.resultAmount || 1
+      const requiredCrafts = Math.ceil(material.quantity / resultAmount)
       const alreadyExpanded = expandedCrafts.get(material.itemId) ?? 0
 
       if (requiredCrafts <= alreadyExpanded) {
