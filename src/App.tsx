@@ -1055,7 +1055,19 @@ if (isMaterialsRoadmapOpen) {
                   {completed} / {totalForCrafter} recetas
                 </p>
               </span>
-              <strong>{progress}%</strong>
+              <strong className={progress === 100 ? 'crafter-complete' : ''}>
+                {progress === 100 ? '100% ✓' : `${progress}%`}
+              </strong>
+              <span
+                className="crafter-progress-track"
+                role="progressbar"
+                aria-label={`Progreso de ${crafter.id}`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progress}
+              >
+                <i style={{ width: `${progress}%` }} />
+              </span>
             </button>
           )
         })}

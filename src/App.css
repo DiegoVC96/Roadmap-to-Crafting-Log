@@ -155,6 +155,33 @@ h1 {
   font-size: 1.1rem;
 }
 
+.crafter-card .crafter-complete {
+  color: #aee6b8;
+}
+
+.crafter-progress-track {
+  grid-column: 1 / -1;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(5, 11, 16, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(104, 132, 151, 0.36);
+}
+
+.crafter-progress-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #bb7b2e, #f6da7d);
+  box-shadow: 0 0 10px rgba(246, 218, 125, 0.34);
+  transition: width 250ms ease;
+}
+
+.crafter-card:has(.crafter-complete) .crafter-progress-track i {
+  background: linear-gradient(90deg, #5caa73, #bce8a5);
+  box-shadow: 0 0 10px rgba(157, 229, 166, 0.34);
+}
+
 @media (max-width: 680px) {
   .app {
     padding: 44px 0;
