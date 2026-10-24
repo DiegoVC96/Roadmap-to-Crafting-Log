@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -8,6 +8,7 @@ import { crafterIds, getIconUrl, loadAllRecipes, type CrafterId, type FfxivRecip
 import { loadUserProgress, saveUserProgress } from '@/lib/user-progress';
 
 export default function CraftingLogScreen() {
+  const params = useLocalSearchParams<{ crafter?: CrafterId; recipeId?: string; query?: string }>();
   const [recipes, setRecipes] = useState<FfxivRecipe[]>([]);
   const [completedIds, setCompletedIds] = useState<string[]>([]);
   const [selectedCrafter, setSelectedCrafter] = useState<CrafterId>('Carpenter');
@@ -41,6 +42,14 @@ export default function CraftingLogScreen() {
     const timer = setTimeout(() => { void loadLog(); }, 0);
     return () => clearTimeout(timer);
   }, [loadLog]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (params.crafter && crafterIds.includes(params.crafter)) setSelectedCrafter(params.crafter);
+      if (params.query) setSearch(params.query);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [params.crafter, params.query]);
 
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
@@ -84,7 +93,7 @@ export default function CraftingLogScreen() {
         <Pressable onPress={() => router.push('/materials')} style={styles.materialsButton}><Text style={styles.materialsButtonText}>Ver materiales pendientes</Text></Pressable>
         <Text style={styles.resultCount}>{filteredRecipes.length} recetas</Text>
       </View>}
-      renderItem={({ item }) => <RecipeCard recipe={item} completed={completedIds.includes(item.id)} onToggle={() => void toggleRecipe(item.id)} />}
+      renderItem={({ item }) => <RecipeCard recipe={item} completed={completedIds.includes(item.id)} highlighted={params.recipeId === item.id} onToggle={() => void toggleRecipe(item.id)} />}
       ListEmptyComponent={<Text style={styles.empty}>No encontramos recetas para esta búsqueda.</Text>}
     />
   );
@@ -94,8 +103,8 @@ function LoadingState() {
   return <View style={styles.centered}><ActivityIndicator size="large" color="#e5c86f" /><Text style={styles.loadingText}>Cargando recetas de FFXIV…</Text><Text style={styles.loadingDetail}>La primera carga puede tomar unos momentos.</Text></View>;
 }
 
-function RecipeCard({ recipe, completed, onToggle }: { recipe: FfxivRecipe; completed: boolean; onToggle: () => void }) {
-  return <Pressable onPress={onToggle} style={[styles.recipeCard, completed && styles.recipeCompleted]}>{recipe.iconPath ? <Image source={{ uri: getIconUrl(recipe.iconPath) }} style={styles.icon} /> : <View style={styles.iconFallback} />}<View style={styles.recipeContent}><Text style={[styles.recipeName, completed && styles.recipeNameCompleted]} numberOfLines={2}>{recipe.name}</Text><Text style={styles.recipeLevel}>Nivel {recipe.level ?? '—'} · {recipe.ingredients.length} materiales</Text></View><View style={[styles.check, completed && styles.checkCompleted]}><Text style={styles.checkText}>{completed ? '✓' : ''}</Text></View></Pressable>;
+function RecipeCard({ recipe, completed, highlighted, onToggle }: { recipe: FfxivRecipe; completed: boolean; highlighted: boolean; onToggle: () => void }) {
+  return <Pressable onPress={onToggle} style={[styles.recipeCard, completed && styles.recipeCompleted, highlighted && styles.recipeHighlighted]}>{recipe.iconPath ? <Image source={{ uri: getIconUrl(recipe.iconPath) }} style={styles.icon} /> : <View style={styles.iconFallback} />}<View style={styles.recipeContent}><Text style={[styles.recipeName, completed && styles.recipeNameCompleted]} numberOfLines={2}>{recipe.name}</Text><Text style={styles.recipeLevel}>Nivel {recipe.level ?? '—'} · {recipe.ingredients.length} materiales</Text></View><View style={[styles.check, completed && styles.checkCompleted]}><Text style={styles.checkText}>{completed ? '✓' : ''}</Text></View></Pressable>;
 }
 
 const styles = StyleSheet.create({
@@ -104,6 +113,6 @@ const styles = StyleSheet.create({
   crafterTabs: { gap: 8, paddingVertical: 21 }, crafterTab: { backgroundColor: '#132131', borderColor: '#31465b', borderRadius: 99, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9 }, crafterTabActive: { backgroundColor: '#523d16', borderColor: '#d8af50' }, crafterText: { color: '#b4c0cd', fontSize: 13, fontWeight: '700' }, crafterTextActive: { color: '#f7d985' },
   search: { backgroundColor: '#132131', borderColor: '#31465b', borderRadius: 12, borderWidth: 1, color: '#f4f7fb', fontSize: 16, paddingHorizontal: 14, paddingVertical: 13 }, resultCount: { color: '#8998a9', fontSize: 13, marginBottom: 10, marginTop: 15 }, syncError: { color: '#ffbec5', fontSize: 13, marginTop: 12 },
   materialsButton: { alignItems: 'center', borderColor: '#d8af50', borderRadius: 12, borderWidth: 1, marginTop: 14, paddingVertical: 13 }, materialsButtonText: { color: '#f0d27a', fontSize: 14, fontWeight: '800' },
-  recipeCard: { alignItems: 'center', backgroundColor: '#132131', borderColor: '#2c4054', borderRadius: 14, borderWidth: 1, flexDirection: 'row', marginBottom: 10, padding: 12 }, recipeCompleted: { backgroundColor: '#152a25', borderColor: '#42725a' }, icon: { height: 42, width: 42 }, iconFallback: { backgroundColor: '#324456', borderRadius: 8, height: 42, width: 42 }, recipeContent: { flex: 1, marginHorizontal: 12 }, recipeName: { color: '#f0f4f8', fontSize: 15, fontWeight: '800' }, recipeNameCompleted: { color: '#b7dfbe', textDecorationLine: 'line-through' }, recipeLevel: { color: '#9eabb9', fontSize: 12, marginTop: 5 }, check: { alignItems: 'center', borderColor: '#6c7a89', borderRadius: 15, borderWidth: 2, height: 30, justifyContent: 'center', width: 30 }, checkCompleted: { backgroundColor: '#4f986b', borderColor: '#4f986b' }, checkText: { color: '#fff', fontSize: 19, fontWeight: '900' },
+  recipeCard: { alignItems: 'center', backgroundColor: '#132131', borderColor: '#2c4054', borderRadius: 14, borderWidth: 1, flexDirection: 'row', marginBottom: 10, padding: 12 }, recipeCompleted: { backgroundColor: '#152a25', borderColor: '#42725a' }, recipeHighlighted: { borderColor: '#e05e65', borderWidth: 2 }, icon: { height: 42, width: 42 }, iconFallback: { backgroundColor: '#324456', borderRadius: 8, height: 42, width: 42 }, recipeContent: { flex: 1, marginHorizontal: 12 }, recipeName: { color: '#f0f4f8', fontSize: 15, fontWeight: '800' }, recipeNameCompleted: { color: '#b7dfbe', textDecorationLine: 'line-through' }, recipeLevel: { color: '#9eabb9', fontSize: 12, marginTop: 5 }, check: { alignItems: 'center', borderColor: '#6c7a89', borderRadius: 15, borderWidth: 2, height: 30, justifyContent: 'center', width: 30 }, checkCompleted: { backgroundColor: '#4f986b', borderColor: '#4f986b' }, checkText: { color: '#fff', fontSize: 19, fontWeight: '900' },
   error: { color: '#ffbec5', fontSize: 15, lineHeight: 22, textAlign: 'center' }, retry: { backgroundColor: '#c99d39', borderRadius: 12, marginTop: 20, paddingHorizontal: 20, paddingVertical: 13 }, retryText: { color: '#171109', fontWeight: '800' }, empty: { color: '#aab7c6', marginTop: 22, textAlign: 'center' },
 });
