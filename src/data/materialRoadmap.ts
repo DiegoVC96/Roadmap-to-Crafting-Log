@@ -24,6 +24,86 @@ function chooseCraftingRecipe(recipes: FfxivRecipe[]) {
 }
 
 /**
+ * Calcula cuántas veces hay que ejecutar cada receta para fabricar todas las
+ * recetas pendientes del log, incluyendo los componentes intermedios.
+ */
+export function calculateRecipeCraftTotals(
+  recipes: FfxivRecipe[],
+  completedRecipeIds: string[],
+) {
+  const completed = new Set(completedRecipeIds)
+  const producersByItem = new Map<number, FfxivRecipe[]>()
+  const needs = new Map<number, RecipeIngredient>()
+  const expandedCrafts = new Map<number, number>()
+  const craftTotals = new Map<string, number>()
+
+  for (const recipe of recipes) {
+    const producers = producersByItem.get(recipe.resultItemId) ?? []
+    producers.push(recipe)
+    producersByItem.set(recipe.resultItemId, producers)
+  }
+
+  function addNeed(ingredient: RecipeIngredient, quantity: number) {
+    const current = needs.get(ingredient.itemId)
+    needs.set(ingredient.itemId, {
+      ...ingredient,
+      quantity: (current?.quantity ?? 0) + quantity,
+    })
+  }
+
+  function addCrafts(recipe: FfxivRecipe, crafts: number) {
+    craftTotals.set(recipe.id, (craftTotals.get(recipe.id) ?? 0) + crafts)
+  }
+
+  for (const recipe of recipes) {
+    if (completed.has(recipe.id)) {
+      continue
+    }
+
+    addCrafts(recipe, 1)
+
+    for (const ingredient of recipe.ingredients) {
+      addNeed(ingredient, ingredient.quantity)
+    }
+  }
+
+  let didExpand = true
+  while (didExpand) {
+    didExpand = false
+
+    for (const material of [...needs.values()]) {
+      const candidates = producersByItem.get(material.itemId)
+
+      if (!candidates?.length) {
+        continue
+      }
+
+      const recipe = chooseCraftingRecipe(candidates)
+      const requiredCrafts = Math.ceil(
+        material.quantity / (recipe.resultAmount || 1),
+      )
+      const alreadyExpanded = expandedCrafts.get(material.itemId) ?? 0
+
+      if (requiredCrafts <= alreadyExpanded) {
+        continue
+      }
+
+      const additionalCrafts = requiredCrafts - alreadyExpanded
+      expandedCrafts.set(material.itemId, requiredCrafts)
+      addCrafts(recipe, additionalCrafts)
+
+      for (const ingredient of recipe.ingredients) {
+        addNeed(ingredient, ingredient.quantity * additionalCrafts)
+      }
+
+      didExpand = true
+    }
+  }
+
+  return craftTotals
+}
+
+/**
  * Convierte los ingredientes de las recetas pendientes en sus materiales base.
  * Si un ingrediente es fabricable, se sigue su receta hasta llegar a una fuente
  * que debe obtenerse fuera del crafting. También respeta los resultados por tanda.

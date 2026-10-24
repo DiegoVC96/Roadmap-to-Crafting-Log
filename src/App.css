@@ -561,6 +561,18 @@ h1 {
   white-space: nowrap;
 }
 
+.recipe-check .recipe-craft-total {
+  display: inline-block;
+  margin-left: 7px;
+  color: #f4ce79;
+  font-size: 0.88em;
+  text-decoration: none;
+}
+
+.recipe-row:has(input:checked) .recipe-craft-total {
+  color: #bce8a5;
+}
+
 .recipe-material-button,
 .close-panel-button {
   padding: 7px 10px;

@@ -23,6 +23,7 @@ import {
 import { loadItemSources, type ItemSource } from './data/itemSources'
 import {
   calculateBaseMaterialTotals,
+  calculateRecipeCraftTotals,
   type BaseMaterialTotal,
 } from './data/materialRoadmap'
 import {
@@ -198,6 +199,11 @@ const materialTotals = useMemo(() => {
       : (recipe) => recipe.crafter === materialCrafterScope,
   )
 }, [recipes, completedRecipeIds, materialCrafterScope])
+
+const recipeCraftTotals = useMemo(
+  () => calculateRecipeCraftTotals(recipes, completedRecipeIds),
+  [recipes, completedRecipeIds],
+)
 
 const materialCollectionSummary = useMemo(() => {
   const totalRequired = materialTotals.reduce(
@@ -1443,7 +1449,15 @@ if (isMaterialsRoadmapOpen) {
     alt=""
   />
 ) : null}
-<span>{recipe.name}</span>
+<span>
+  {recipe.name}
+  <b
+    className="recipe-craft-total"
+    title="Veces que debes fabricar esta receta para completar los logs pendientes"
+  >
+    ×{(recipeCraftTotals.get(recipe.id) ?? 0).toLocaleString()}
+  </b>
+</span>
           </label>
 
           <small>
