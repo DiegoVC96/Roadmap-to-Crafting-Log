@@ -1348,6 +1348,29 @@ button:focus-visible {
   outline: 3px solid rgba(231, 184, 90, 0.18);
 }
 
+.download-material-list-button {
+  padding: 10px 13px;
+  border: 1px solid rgba(126, 182, 164, 0.72);
+  border-radius: 8px;
+  color: #def2e2;
+  background: linear-gradient(135deg, rgba(42, 99, 76, 0.86), rgba(26, 59, 52, 0.94));
+  box-shadow: inset 0 1px 0 rgba(224, 255, 235, 0.11);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.download-material-list-button:hover:not(:disabled) {
+  border-color: #c7efd3;
+  background: linear-gradient(135deg, rgba(56, 124, 94, 0.94), rgba(35, 78, 66, 0.98));
+}
+
+.download-material-list-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 .app-logo {
   display: block;
   width: clamp(76px, 14vw, 118px);
@@ -1413,6 +1436,11 @@ button:focus-visible {
 
   .material-sort-control {
     justify-content: space-between;
+  }
+
+  .download-material-list-button {
+    width: 100%;
+    min-height: 42px;
   }
 
   .recipe-search,

@@ -269,6 +269,38 @@ function updateInventory(itemId: number, value: string) {
   }))
 }
 
+function downloadMaterialList() {
+  const escapeCsvValue = (value: string | number) =>
+    `"${String(value).replaceAll('"', '""')}"`
+  const rows = visibleMaterialTotals.map((material) => {
+    const ownedQuantity = inventoryByItemId[String(material.itemId)] ?? 0
+    const remainingQuantity = Math.max(material.quantity - ownedQuantity, 0)
+
+    return [
+      material.name,
+      material.quantity,
+      ownedQuantity,
+      remainingQuantity,
+    ]
+      .map(escapeCsvValue)
+      .join(';')
+  })
+  const csv = [
+    'Material;Total necesario;En inventario;Por conseguir',
+    ...rows,
+  ].join('\n')
+  const file = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' })
+  const downloadUrl = URL.createObjectURL(file)
+  const link = document.createElement('a')
+
+  link.href = downloadUrl
+  link.download = 'roadmap-materiales-pendientes.csv'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(downloadUrl)
+}
+
 async function handleOpenIngredients(recipe: FfxivRecipe) {
   setSelectedRecipe(recipe)
   setRecipeIngredients([])
@@ -868,6 +900,15 @@ if (isMaterialsRoadmapOpen) {
               <option value="name">Nombre: A a Z</option>
             </select>
           </label>
+
+          <button
+            className="download-material-list-button"
+            type="button"
+            onClick={downloadMaterialList}
+            disabled={visibleMaterialTotals.length === 0}
+          >
+            ↓ Descargar lista CSV
+          </button>
         </div>
 
         {visibleMaterialTotals.length === 0 && (
