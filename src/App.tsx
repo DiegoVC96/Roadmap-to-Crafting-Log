@@ -153,6 +153,35 @@ const materialTotals = useMemo(() => {
   return calculateBaseMaterialTotals(recipes, completedRecipeIds)
 }, [recipes, completedRecipeIds])
 
+const materialCollectionSummary = useMemo(() => {
+  const totalRequired = materialTotals.reduce(
+    (total, material) => total + material.quantity,
+    0,
+  )
+  const owned = materialTotals.reduce(
+    (total, material) =>
+      total +
+      Math.min(
+        material.quantity,
+        inventoryByItemId[String(material.itemId)] ?? 0,
+      ),
+    0,
+  )
+  const completedMaterialTypes = materialTotals.filter(
+    (material) =>
+      (inventoryByItemId[String(material.itemId)] ?? 0) >= material.quantity,
+  ).length
+
+  return {
+    totalRequired,
+    owned,
+    remaining: Math.max(totalRequired - owned, 0),
+    completedMaterialTypes,
+    percentage:
+      totalRequired === 0 ? 100 : Math.round((owned / totalRequired) * 100),
+  }
+}, [inventoryByItemId, materialTotals])
+
 const visibleMaterialTotals = materialTotals.filter((material) =>
   material.name
     .toLocaleLowerCase()
@@ -718,6 +747,37 @@ if (isMaterialsRoadmapOpen) {
           Las recetas intermedias se convierten automáticamente en materiales base.
           Selecciona un material para ver cómo obtenerlo sin crafting.
         </p>
+
+        <section className="material-collection-summary" aria-label="Progreso de recolección">
+          <div className="collection-progress-card collection-progress-card-primary">
+            <span>Progreso de recolección</span>
+            <strong>{materialCollectionSummary.percentage}%</strong>
+            <div
+              className="collection-progress-bar"
+              role="progressbar"
+              aria-label="Progreso de recolección"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={materialCollectionSummary.percentage}
+            >
+              <i style={{ width: `${materialCollectionSummary.percentage}%` }} />
+            </div>
+          </div>
+          <div className="collection-progress-card">
+            <span>En inventario</span>
+            <strong>×{materialCollectionSummary.owned.toLocaleString()}</strong>
+          </div>
+          <div className="collection-progress-card">
+            <span>Por conseguir</span>
+            <strong>×{materialCollectionSummary.remaining.toLocaleString()}</strong>
+          </div>
+          <div className="collection-progress-card">
+            <span>Tipos completos</span>
+            <strong>
+              {materialCollectionSummary.completedMaterialTypes} / {materialTotals.length}
+            </strong>
+          </div>
+        </section>
 
         <input
           className="material-search"
