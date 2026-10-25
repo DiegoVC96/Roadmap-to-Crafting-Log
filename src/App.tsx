@@ -68,6 +68,22 @@ type SmartPlanItem = {
 
 type FreeTrialStorageLocation = 'inventory' | 'saddlebag'
 
+const recipeLevelRanges = Array.from({ length: 20 }, (_, index) => {
+  const start = index * 5 + 1
+  const end = start + 4
+
+  return {
+    start,
+    end,
+    label: `${start}–${end}`,
+  }
+})
+
+function getRecipeLevelRangeStart(level: number | null | undefined) {
+  const normalizedLevel = Math.max(level ?? 1, 1)
+  return Math.floor((normalizedLevel - 1) / 5) * 5 + 1
+}
+
 function collectBaseMaterials(
   node: CraftingTreeNode,
   materials = new Map<number, AcquisitionMaterial>(),
@@ -386,10 +402,23 @@ const visibleSelectedRecipes = selectedRecipes.filter((recipe) => {
 
   const matchesLevel =
     levelFilter === 'all' ||
-    Math.floor((recipe.level ?? 0) / 10) * 10 === Number(levelFilter)
+    getRecipeLevelRangeStart(recipe.level) === Number(levelFilter)
 
   return matchesSearch && matchesFilter && matchesLevel
 })
+
+const visibleRecipesByLevelRange = useMemo(
+  () =>
+    recipeLevelRanges
+      .map((range) => ({
+        ...range,
+        recipes: visibleSelectedRecipes.filter(
+          (recipe) => getRecipeLevelRangeStart(recipe.level) === range.start,
+        ),
+      }))
+      .filter((range) => range.recipes.length > 0),
+  [visibleSelectedRecipes],
+)
 
 const materialTotals = useMemo(() => {
   return calculateBaseMaterialTotals(
@@ -2663,17 +2692,11 @@ if (isMaterialsRoadmapOpen) {
         aria-label="Filtrar por nivel"
         >
         <option value="all">Todos los niveles</option>
-        <option value="0">Nivel 1–9</option>
-        <option value="10">Nivel 10–19</option>
-        <option value="20">Nivel 20–29</option>
-        <option value="30">Nivel 30–39</option>
-        <option value="40">Nivel 40–49</option>
-        <option value="50">Nivel 50–59</option>
-        <option value="60">Nivel 60–69</option>
-        <option value="70">Nivel 70–79</option>
-        <option value="80">Nivel 80–89</option>
-        <option value="90">Nivel 90–99</option>
-        <option value="100">Nivel 100</option>
+        {recipeLevelRanges.map((range) => (
+          <option key={range.start} value={range.start}>
+            Nivel {range.label}
+          </option>
+        ))}
       </select>
 
       <div className="filter-buttons">
@@ -2703,7 +2726,13 @@ if (isMaterialsRoadmapOpen) {
     </p>
 
     <div className="recipe-list">
-  {visibleSelectedRecipes.map((recipe) => {
+  {visibleRecipesByLevelRange.map((range) => (
+    <section className="recipe-level-group" key={range.start}>
+      <div className="recipe-level-heading">
+        <h3>Nivel {range.label}</h3>
+        <span>{range.recipes.length} recetas</span>
+      </div>
+  {range.recipes.map((recipe) => {
     const isCompleted = completedRecipeIds.includes(recipe.id)
     const isSelectedRecipe = selectedRecipe?.id === recipe.id
 
@@ -2847,6 +2876,8 @@ if (isMaterialsRoadmapOpen) {
       </div>
     )
   })}
+    </section>
+  ))}
 </div>
 
     {visibleSelectedRecipes.length === 0 && (

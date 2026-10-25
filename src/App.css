@@ -366,7 +366,35 @@ h1 {
 
 .recipe-list {
   display: grid;
+  gap: 18px;
+}
+
+.recipe-level-group {
+  display: grid;
   gap: 10px;
+}
+
+.recipe-level-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 1px solid rgba(224, 182, 94, 0.4);
+  border-radius: 8px;
+  background: rgba(78, 58, 27, 0.32);
+}
+
+.recipe-level-heading h3 {
+  margin: 0;
+  color: #f5d48d;
+  font-family: Georgia, serif;
+  font-size: 1rem;
+}
+
+.recipe-level-heading span {
+  color: #c5d2df;
+  font-size: 0.84rem;
 }
 
 .recipe-row {
