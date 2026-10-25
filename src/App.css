@@ -1542,6 +1542,17 @@ h1 {
   font-size: 0.92rem;
 }
 
+.material-scope-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.material-scope-filters .material-crafter-scope {
+  margin: 0;
+}
+
 .material-crafter-scope select {
   padding: 10px 12px;
   border: 1px solid #536f87;
@@ -2527,6 +2538,14 @@ button:focus-visible {
   .material-crafter-scope {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .material-scope-filters {
+    flex-direction: column;
+  }
+
+  .material-scope-filters .material-crafter-scope {
+    width: 100%;
   }
 
   .material-roadmap-controls {

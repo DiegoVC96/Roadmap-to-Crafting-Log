@@ -79,9 +79,25 @@ const recipeLevelRanges = Array.from({ length: 20 }, (_, index) => {
   }
 })
 
+const materialLevelRanges = Array.from({ length: 10 }, (_, index) => {
+  const start = index * 10 + 1
+  const end = start + 9
+
+  return {
+    start,
+    end,
+    label: `${start}–${end}`,
+  }
+})
+
 function getRecipeLevelRangeStart(level: number | null | undefined) {
   const normalizedLevel = Math.max(level ?? 1, 1)
   return Math.floor((normalizedLevel - 1) / 5) * 5 + 1
+}
+
+function getMaterialLevelRangeStart(level: number | null | undefined) {
+  const normalizedLevel = Math.max(level ?? 1, 1)
+  return Math.floor((normalizedLevel - 1) / 10) * 10 + 1
 }
 
 function collectBaseMaterials(
@@ -276,6 +292,7 @@ function App() {
   const [materialCrafterScope, setMaterialCrafterScope] = useState<
     'all' | CrafterId
   >('all')
+  const [materialLevelScope, setMaterialLevelScope] = useState('all')
   const [recipeFilter, setRecipeFilter] = useState<
     'all' | 'pending' | 'completed'
   >('all')
@@ -424,11 +441,13 @@ const materialTotals = useMemo(() => {
   return calculateBaseMaterialTotals(
     recipes,
     completedRecipeIds,
-    materialCrafterScope === 'all'
-      ? undefined
-      : (recipe) => recipe.crafter === materialCrafterScope,
+    (recipe) =>
+      (materialCrafterScope === 'all' ||
+        recipe.crafter === materialCrafterScope) &&
+      (materialLevelScope === 'all' ||
+        getMaterialLevelRangeStart(recipe.level) === Number(materialLevelScope)),
   )
-}, [recipes, completedRecipeIds, materialCrafterScope])
+}, [recipes, completedRecipeIds, materialCrafterScope, materialLevelScope])
 
 const recipeCraftTotals = useMemo(
   () => calculateRecipeCraftTotals(recipes, completedRecipeIds),
@@ -2279,6 +2298,10 @@ if (isMaterialsRoadmapOpen) {
               {materialCrafterScope === 'all'
                 ? 'Necesitas reunir o fabricar'
                 : `Materiales de ${materialCrafterScope}`}
+              {materialLevelScope !== 'all' &&
+                ` · Nivel ${materialLevelRanges.find(
+                  (range) => range.start === Number(materialLevelScope),
+                )?.label}`}
             </h2>
           </div>
 
@@ -2313,22 +2336,39 @@ if (isMaterialsRoadmapOpen) {
           Selecciona un material para ver cómo obtenerlo sin crafting.
         </p>
 
-        <label className="material-crafter-scope">
-          Ver materiales de
-          <select
-            value={materialCrafterScope}
-            onChange={(event) =>
-              setMaterialCrafterScope(event.target.value as 'all' | CrafterId)
-            }
-          >
-            <option value="all">Todas las profesiones</option>
-            {crafters.map((crafter) => (
-              <option key={crafter.id} value={crafter.id}>
-                {crafter.id}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="material-scope-filters">
+          <label className="material-crafter-scope">
+            Ver materiales de
+            <select
+              value={materialCrafterScope}
+              onChange={(event) =>
+                setMaterialCrafterScope(event.target.value as 'all' | CrafterId)
+              }
+            >
+              <option value="all">Todas las profesiones</option>
+              {crafters.map((crafter) => (
+                <option key={crafter.id} value={crafter.id}>
+                  {crafter.id}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="material-crafter-scope">
+            Nivel de receta
+            <select
+              value={materialLevelScope}
+              onChange={(event) => setMaterialLevelScope(event.target.value)}
+            >
+              <option value="all">Todos los niveles</option>
+              {materialLevelRanges.map((range) => (
+                <option key={range.start} value={range.start}>
+                  Nivel {range.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <section className="material-collection-summary" aria-label="Progreso de recolección">
           <div className="collection-progress-card collection-progress-card-primary">
