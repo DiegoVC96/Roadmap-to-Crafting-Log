@@ -87,6 +87,12 @@ type CraftingGraphPosition = {
   y: number
 }
 
+type DataRecipeIssue = {
+  recipe: FfxivRecipe
+  reason: string
+  suggestedCategory: FfxivRecipe['category']
+}
+
 const recipeLevelRanges = Array.from({ length: 20 }, (_, index) => {
   const start = index * 5 + 1
   const end = start + 4
@@ -309,6 +315,12 @@ function App() {
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
   const [isCraftingAssistantOpen, setIsCraftingAssistantOpen] = useState(false)
+  const [isDataAgentOpen, setIsDataAgentOpen] = useState(false)
+  const [isRunningDataAudit, setIsRunningDataAudit] = useState(false)
+  const [dataAuditProgress, setDataAuditProgress] = useState({ current: 0, total: 0 })
+  const [dataAuditError, setDataAuditError] = useState<string | null>(null)
+  const [missingSourceMaterials, setMissingSourceMaterials] = useState<BaseMaterialTotal[]>([])
+  const [dataAuditSourceFailures, setDataAuditSourceFailures] = useState(0)
   const [isFreeTrialStorageOpen, setIsFreeTrialStorageOpen] = useState(false)
   const [freeTrialSearchText, setFreeTrialSearchText] = useState('')
   const [freeTrialStorageByItemId, setFreeTrialStorageByItemId] = useState<
@@ -441,6 +453,41 @@ function App() {
       .filter((goal) => goal.pending > 0)
   }, [completedRecipeIds, recipes])
 
+  const dataRecipeIssues = useMemo<DataRecipeIssue[]>(() => {
+    return recipes.flatMap<DataRecipeIssue>((recipe) => {
+      if (recipe.masterRecipeBook && recipe.category !== 'master') {
+        return [{
+          recipe,
+          reason: `Tiene el libro ${recipe.masterRecipeBook}, pero no está marcada como Master Recipe.`,
+          suggestedCategory: 'master',
+        }]
+      }
+
+      if (recipe.category === 'master' && !recipe.masterRecipeBook) {
+        return [{
+          recipe,
+          reason: 'Está marcada como Master Recipe, pero no indica un libro maestro.',
+          suggestedCategory: 'special',
+        }]
+      }
+
+      if (recipe.category === 'level' && recipe.level === null) {
+        return [{
+          recipe,
+          reason: 'Es una receta Level-based sin nivel de receta.',
+          suggestedCategory: 'special',
+        }]
+      }
+
+      return []
+    })
+  }, [recipes])
+
+  const recipesWithoutIcons = useMemo(
+    () => recipes.filter((recipe) => !recipe.iconPath),
+    [recipes],
+  )
+
   const selectedRecipes = recipes.filter(
   (recipe) => recipe.crafter === selectedCrafterId,
 )
@@ -492,6 +539,11 @@ const materialTotals = useMemo(() => {
         getMaterialLevelRangeStart(recipe.level) === Number(materialLevelScope)),
   )
 }, [recipes, completedRecipeIds, materialCrafterScope, materialLevelScope])
+
+const materialsWithoutIcons = useMemo(
+  () => materialTotals.filter((material) => !material.iconPath),
+  [materialTotals],
+)
 
 const recipeCraftTotals = useMemo(
   () => calculateRecipeCraftTotals(recipes, completedRecipeIds),
@@ -1191,6 +1243,57 @@ async function openItemSources(material: BaseMaterialTotal) {
   }
 }
 
+function runDataAudit() {
+  const materials = materialTotals.filter(
+    (material) => material.quantity > 0,
+  )
+
+  setIsRunningDataAudit(true)
+  setDataAuditError(null)
+  setMissingSourceMaterials([])
+  setDataAuditSourceFailures(0)
+  setDataAuditProgress({ current: 0, total: materials.length })
+
+  void (async () => {
+    const materialsWithoutSources: BaseMaterialTotal[] = []
+    let failedRequests = 0
+    let checked = 0
+    const batchSize = 6
+
+    for (let index = 0; index < materials.length; index += batchSize) {
+      const batch = materials.slice(index, index + batchSize)
+      await Promise.all(
+        batch.map(async (material) => {
+          try {
+            const sources = await loadItemSources(material.itemId)
+            if (sources.length === 0) {
+              materialsWithoutSources.push(material)
+            }
+          } catch {
+            failedRequests += 1
+          } finally {
+            checked += 1
+            setDataAuditProgress({ current: checked, total: materials.length })
+          }
+        }),
+      )
+    }
+
+    setMissingSourceMaterials(
+      materialsWithoutSources.sort((first, second) =>
+        first.name.localeCompare(second.name),
+      ),
+    )
+    setDataAuditSourceFailures(failedRequests)
+  })()
+    .catch(() => {
+      setDataAuditError(
+        'No pudimos terminar la revisión de fuentes. Inténtalo nuevamente.',
+      )
+    })
+    .finally(() => setIsRunningDataAudit(false))
+}
+
 const craftingRecipeForSelectedMaterial = selectedMaterialSource
   ? recipes.find(
       (recipe) => recipe.resultItemId === selectedMaterialSource.itemId,
@@ -1545,6 +1648,201 @@ useEffect(() => {
     return (
       <main className="auth-page">
         <p className="empty-state">Cargando tu progreso guardado…</p>
+      </main>
+    )
+  }
+
+  if (isDataAgentOpen) {
+    const hasAuditRun = dataAuditProgress.total > 0
+    const visibleMissingSources = missingSourceMaterials.slice(0, 20)
+    const visibleRecipeIssues = dataRecipeIssues.slice(0, 20)
+    const visibleRecipesWithoutIcons = recipesWithoutIcons.slice(0, 12)
+    const visibleMaterialsWithoutIcons = materialsWithoutIcons.slice(0, 12)
+
+    return (
+      <main className="app">
+        <AppHeader user={currentUser} />
+        <header className="hero">
+          <p className="eyebrow">CONTROL DE CALIDAD</p>
+          <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
+          <h1>Agente de datos</h1>
+          <p className="subtitle">
+            Revisa la calidad del catálogo para que tu planificación siempre tenga datos confiables.
+          </p>
+        </header>
+
+        <section className="data-agent-page">
+          <button
+            className="back-to-materials-button"
+            type="button"
+            onClick={() => setIsDataAgentOpen(false)}
+          >
+            ← Volver al crafting log
+          </button>
+
+          <div className="data-agent-heading">
+            <div>
+              <p className="section-label">REVISIÓN DEL CATÁLOGO</p>
+              <h2>Detecta inconsistencias antes de planificar</h2>
+              <p>
+                Las categorías y los íconos se validan localmente. La comprobación de fuentes consulta la guía de obtención para cada material pendiente.
+              </p>
+            </div>
+            <button
+              className="data-agent-run-button"
+              type="button"
+              disabled={!hasLoadedRecipes || isRunningDataAudit}
+              onClick={runDataAudit}
+            >
+              {isRunningDataAudit ? 'Revisando fuentes…' : 'Analizar datos'}
+            </button>
+          </div>
+
+          {!hasLoadedRecipes ? (
+            <p className="empty-state">Carga el crafting log para iniciar la revisión.</p>
+          ) : (
+            <>
+              <div className="data-agent-summary">
+                <article>
+                  <span>Clasificación</span>
+                  <strong>{dataRecipeIssues.length}</strong>
+                  <small>recetas para revisar</small>
+                </article>
+                <article>
+                  <span>Íconos</span>
+                  <strong>{recipesWithoutIcons.length + materialsWithoutIcons.length}</strong>
+                  <small>recetas o materiales sin imagen</small>
+                </article>
+                <article>
+                  <span>Fuentes</span>
+                  <strong>{hasAuditRun ? missingSourceMaterials.length : '—'}</strong>
+                  <small>{hasAuditRun ? 'materiales sin fuente encontrada' : 'ejecuta el análisis para revisar'}</small>
+                </article>
+              </div>
+
+              {isRunningDataAudit && (
+                <div className="data-agent-progress" role="status">
+                  <span>
+                    Revisando fuentes: {dataAuditProgress.current.toLocaleString()} de {dataAuditProgress.total.toLocaleString()}
+                  </span>
+                  <i
+                    style={{
+                      width: `${dataAuditProgress.total === 0 ? 0 : (dataAuditProgress.current / dataAuditProgress.total) * 100}%`,
+                    }}
+                  />
+                </div>
+              )}
+
+              {dataAuditError && <p className="error-message">{dataAuditError}</p>}
+
+              <div className="data-agent-sections">
+                <section>
+                  <div className="data-agent-section-heading">
+                    <div>
+                      <p className="section-label">CATEGORÍAS</p>
+                      <h3>Recetas potencialmente mal clasificadas</h3>
+                    </div>
+                    <strong>{dataRecipeIssues.length}</strong>
+                  </div>
+                  {visibleRecipeIssues.length === 0 ? (
+                    <p className="data-agent-empty">No encontramos inconsistencias de categoría.</p>
+                  ) : (
+                    <div className="data-agent-list">
+                      {visibleRecipeIssues.map((issue) => (
+                        <button
+                          key={issue.recipe.id}
+                          type="button"
+                          onClick={() => {
+                            setIsDataAgentOpen(false)
+                            setSelectedCrafterId(issue.recipe.crafter)
+                            setRecipeCategoryFilter(issue.suggestedCategory)
+                            setRecipeFilter('all')
+                            setSearchText(issue.recipe.name)
+                            setLevelFilter('all')
+                          }}
+                        >
+                          {issue.recipe.iconPath && <img className="game-icon" src={getIconUrl(issue.recipe.iconPath)} alt="" />}
+                          <span><strong>{issue.recipe.name}</strong><small>{issue.reason}</small></span>
+                          <b>Revisar</b>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section>
+                  <div className="data-agent-section-heading">
+                    <div>
+                      <p className="section-label">FUENTES</p>
+                      <h3>Materiales sin fuente encontrada</h3>
+                    </div>
+                    <strong>{hasAuditRun ? missingSourceMaterials.length : '—'}</strong>
+                  </div>
+                  {!hasAuditRun ? (
+                    <p className="data-agent-empty">Pulsa “Analizar datos” para comprobar las fuentes de tus materiales pendientes.</p>
+                  ) : visibleMissingSources.length === 0 ? (
+                    <p className="data-agent-empty">Todos los materiales revisados tienen al menos una fuente registrada.</p>
+                  ) : (
+                    <div className="data-agent-list">
+                      {visibleMissingSources.map((material) => (
+                        <button
+                          key={material.itemId}
+                          type="button"
+                          onClick={() => {
+                            setIsDataAgentOpen(false)
+                            void openItemSources(material)
+                          }}
+                        >
+                          {material.iconPath && <img className="game-icon" src={getIconUrl(material.iconPath)} alt="" />}
+                          <span><strong>{material.name}</strong><small>Se necesitan ×{material.quantity.toLocaleString()} · abrir guía</small></span>
+                          <b>Investigar</b>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {dataAuditSourceFailures > 0 && (
+                    <p className="data-agent-note">No se pudieron consultar {dataAuditSourceFailures} materiales por una respuesta temporal de la fuente de datos.</p>
+                  )}
+                </section>
+
+                <section>
+                  <div className="data-agent-section-heading">
+                    <div>
+                      <p className="section-label">IMÁGENES</p>
+                      <h3>Íconos faltantes</h3>
+                    </div>
+                    <strong>{recipesWithoutIcons.length + materialsWithoutIcons.length}</strong>
+                  </div>
+                  {visibleRecipesWithoutIcons.length === 0 && visibleMaterialsWithoutIcons.length === 0 ? (
+                    <p className="data-agent-empty">Todos los elementos pendientes de esta revisión tienen un ícono.</p>
+                  ) : (
+                    <div className="data-agent-list data-agent-icon-list">
+                      {visibleRecipesWithoutIcons.map((recipe) => (
+                        <button key={`recipe-${recipe.id}`} type="button" onClick={() => {
+                          setIsDataAgentOpen(false)
+                          setSelectedCrafterId(recipe.crafter)
+                          setRecipeCategoryFilter(recipe.category)
+                          setRecipeFilter('all')
+                          setSearchText(recipe.name)
+                        }}>
+                          <span><strong>{recipe.name}</strong><small>Receta · {recipe.crafter}</small></span><b>Ver</b>
+                        </button>
+                      ))}
+                      {visibleMaterialsWithoutIcons.map((material) => (
+                        <button key={`material-${material.itemId}`} type="button" onClick={() => {
+                          setIsDataAgentOpen(false)
+                          void openItemSources(material)
+                        }}>
+                          <span><strong>{material.name}</strong><small>Material pendiente · ×{material.quantity.toLocaleString()}</small></span><b>Ver</b>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            </>
+          )}
+        </section>
       </main>
     )
   }
@@ -2910,6 +3208,15 @@ if (isMaterialsRoadmapOpen) {
             disabled={!hasLoadedRecipes}
           >
             Asistente de crafting
+          </button>
+
+          <button
+            className="data-agent-button"
+            type="button"
+            onClick={() => setIsDataAgentOpen(true)}
+            disabled={!hasLoadedRecipes}
+          >
+            Agente de datos
           </button>
 
           <button

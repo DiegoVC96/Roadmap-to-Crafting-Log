@@ -2253,6 +2253,7 @@ button:focus-visible {
 .main-actions .reset-button,
 .main-actions .materials-roadmap-button,
 .main-actions .assistant-button,
+.main-actions .data-agent-button,
 .main-actions .free-trial-button,
 .main-actions .crafting-tree-button {
   display: inline-flex;
@@ -2270,6 +2271,178 @@ button:focus-visible {
   border-color: #9178bb;
   background: linear-gradient(135deg, #493967, #2a5061);
   color: #f2e8ff;
+}
+
+.data-agent-button {
+  border-color: #558faf;
+  background: linear-gradient(135deg, #204c65, #213b58);
+  color: #d9f2ff;
+}
+
+.data-agent-page {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid #597f9a;
+  border-radius: 18px;
+  background: rgba(17, 32, 48, 0.94);
+}
+
+.data-agent-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+  margin: 20px 0 18px;
+}
+
+.data-agent-heading h2 {
+  margin: 2px 0 6px;
+  color: #f2d48b;
+  font-family: Georgia, serif;
+  font-size: 1.65rem;
+}
+
+.data-agent-heading p:not(.section-label) {
+  max-width: 730px;
+  margin: 0;
+  color: #c6d9e6;
+}
+
+.data-agent-run-button {
+  min-height: 44px;
+  white-space: nowrap;
+  border-color: #72b7d2;
+  background: linear-gradient(135deg, #236078, #29475f);
+  color: #e0f7ff;
+}
+
+.data-agent-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.data-agent-summary article {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid rgba(87, 141, 170, 0.65);
+  border-radius: 11px;
+  background: rgba(20, 47, 68, 0.68);
+}
+
+.data-agent-summary span,
+.data-agent-summary small {
+  color: #c5dce9;
+  font-size: 0.84rem;
+}
+
+.data-agent-summary strong {
+  color: #aee9d5;
+  font-size: 1.45rem;
+}
+
+.data-agent-progress {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  color: #d9ecf4;
+  font-size: 0.9rem;
+}
+
+.data-agent-progress i {
+  display: block;
+  min-width: 2px;
+  height: 7px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #77c7d9, #c3edbd);
+  box-shadow: 0 0 10px rgba(119, 199, 217, 0.5);
+}
+
+.data-agent-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.data-agent-sections > section {
+  padding: 17px;
+  border: 1px solid rgba(83, 121, 151, 0.64);
+  border-radius: 12px;
+  background: rgba(11, 24, 40, 0.62);
+}
+
+.data-agent-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 11px;
+}
+
+.data-agent-section-heading h3 {
+  margin: 3px 0 0;
+  color: #e7efff;
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+}
+
+.data-agent-section-heading > strong {
+  color: #b8ebd0;
+  font-size: 1.25rem;
+}
+
+.data-agent-list {
+  display: grid;
+  gap: 8px;
+}
+
+.data-agent-list button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(86, 118, 151, 0.58);
+  border-radius: 9px;
+  background: rgba(22, 42, 61, 0.7);
+  text-align: left;
+}
+
+.data-agent-list button:hover {
+  border-color: #d5b668;
+  transform: translateY(-1px);
+}
+
+.data-agent-list button > span {
+  display: grid;
+  gap: 3px;
+}
+
+.data-agent-list button strong {
+  color: #edf5ff;
+}
+
+.data-agent-list button small,
+.data-agent-empty,
+.data-agent-note {
+  color: #c0d3df;
+  font-size: 0.87rem;
+}
+
+.data-agent-list button b {
+  color: #b9e8d3;
+  font-size: 0.82rem;
+}
+
+.data-agent-empty {
+  margin: 0;
+}
+
+.data-agent-note {
+  margin: 12px 0 0;
+  color: #e5cc91;
 }
 
 .crafting-assistant-page {
@@ -3126,6 +3299,7 @@ button:focus-visible {
   .hero .reset-button,
   .hero .materials-roadmap-button,
   .hero .assistant-button,
+  .hero .data-agent-button,
   .hero .free-trial-button,
   .hero .crafting-tree-button {
     width: min(100%, 360px);
@@ -3191,13 +3365,24 @@ button:focus-visible {
   .recipe-cost-page,
   .smart-plan-page,
   .free-trial-page,
-  .crafting-assistant-page {
+  .crafting-assistant-page,
+  .data-agent-page {
     padding: 18px;
   }
 
   .assistant-summary,
+  .data-agent-summary,
   .assistant-goals > div {
     grid-template-columns: 1fr;
+  }
+
+  .data-agent-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-agent-run-button {
+    width: 100%;
   }
 
   .assistant-recommendation {
