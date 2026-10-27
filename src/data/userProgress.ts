@@ -65,12 +65,37 @@ function readFreeTrialStorage(value: unknown) {
   ) as Record<string, 'inventory' | 'saddlebag'>
 }
 
+function readCraftingTreeLanes(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const validLanes = new Set([
+    'gather',
+    'Carpenter',
+    'Blacksmith',
+    'Armorer',
+    'Goldsmith',
+    'Leatherworker',
+    'Weaver',
+    'Alchemist',
+    'Culinarian',
+  ])
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([materialKey, lane]) => materialKey.length > 0 && typeof lane === 'string' && validLanes.has(lane),
+    ),
+  ) as Record<string, string>
+}
+
 export type UserProgress = {
   completedRecipeIds: string[]
   inventoryByItemId: Record<string, number>
   farmingSessionItemIds: number[]
   marketScope: MarketScope | null
   freeTrialStorageByItemId: Record<string, 'inventory' | 'saddlebag'>
+  craftingTreeLaneByKey: Record<string, string>
 }
 
 export async function loadUserProgress(userId: string) {
@@ -83,6 +108,7 @@ export async function loadUserProgress(userId: string) {
       farmingSessionItemIds: [],
       marketScope: null,
       freeTrialStorageByItemId: {},
+      craftingTreeLaneByKey: {},
     }
   }
 
@@ -94,6 +120,7 @@ export async function loadUserProgress(userId: string) {
     farmingSessionItemIds: readItemIds(data.farmingSessionItemIds),
     marketScope: readMarketScope(data.marketScope),
     freeTrialStorageByItemId: readFreeTrialStorage(data.freeTrialStorageByItemId),
+    craftingTreeLaneByKey: readCraftingTreeLanes(data.craftingTreeLaneByKey),
   }
 }
 
@@ -106,6 +133,7 @@ export async function saveUserProgress(userId: string, progress: UserProgress) {
       farmingSessionItemIds: progress.farmingSessionItemIds,
       marketScope: progress.marketScope,
       freeTrialStorageByItemId: progress.freeTrialStorageByItemId,
+      craftingTreeLaneByKey: progress.craftingTreeLaneByKey,
       updatedAt: serverTimestamp(),
     },
     { merge: true },

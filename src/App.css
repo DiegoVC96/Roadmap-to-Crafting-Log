@@ -760,56 +760,241 @@ h1 {
   color: #f4ce79;
 }
 
-.crafting-tree-list,
-.crafting-tree-list ul {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.crafting-workbench-help {
+  margin: 0 0 14px;
+  color: #c5d4df;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
-.crafting-tree-list ul {
-  margin: 10px 0 0 22px;
-  padding-left: 14px;
-  border-left: 2px solid rgba(99, 142, 170, 0.55);
+.crafting-workbench-scroll {
+  overflow-x: auto;
+  padding-bottom: 8px;
 }
 
-.crafting-tree-node-card {
+.crafting-workbench {
+  position: relative;
+  min-width: 1460px;
+  padding: 10px 4px 4px;
+}
+
+.crafting-workbench-root {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 11px;
-  border: 1px solid rgba(74, 107, 130, 0.8);
-  border-radius: 9px;
-  background: rgba(20, 38, 51, 0.7);
+  width: min(380px, 46%);
+  margin: 0 auto;
+  padding: 12px;
+  border: 1px solid rgba(239, 194, 99, 0.86);
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(99, 73, 32, 0.94), rgba(28, 47, 60, 0.96));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
 }
 
-.crafting-tree-root > .crafting-tree-node-card {
-  border-color: rgba(231, 184, 90, 0.72);
-  background: linear-gradient(135deg, rgba(76, 57, 29, 0.76), rgba(26, 45, 57, 0.86));
-}
-
-.crafting-tree-node-card div {
+.crafting-workbench-root div {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.crafting-tree-node-card strong {
+.crafting-workbench-root span {
+  color: #f4ce79;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.crafting-workbench-root strong {
   overflow: hidden;
-  color: #edf5ec;
+  color: #fff4d7;
+  font-family: Georgia, serif;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.crafting-tree-node-card small {
-  color: #b4c4d1;
+.crafting-workbench-root b {
+  color: #fff0b3;
 }
 
-.crafting-tree-node-card b {
+.crafting-workbench-connector {
+  width: 2px;
+  height: 34px;
+  margin: 0 auto;
+  background: linear-gradient(#e6b95b, #7395ad);
+}
+
+.crafting-workbench-lanes {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(148px, 1fr));
+  gap: 10px;
+  position: relative;
+}
+
+.crafting-workbench-lanes::before {
+  position: absolute;
+  top: 0;
+  right: 5.55%;
+  left: 5.55%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #759ab5 5%, #759ab5 95%, transparent);
+  content: '';
+}
+
+.crafting-workbench-lane {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-height: 220px;
+  padding: 15px 9px 10px;
+  border: 1px solid rgba(81, 119, 147, 0.68);
+  border-radius: 10px;
+  background: rgba(12, 26, 37, 0.56);
+}
+
+.crafting-workbench-lane header {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+}
+
+.crafting-workbench-lane header > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+
+.crafting-workbench-lane h4 {
+  overflow: hidden;
+  margin: 0;
+  color: #dceafb;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crafting-workbench-lane header small {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  color: #142331;
+  background: #d8e8f5;
+  font-weight: 800;
+  font-size: 0.7rem;
+}
+
+.workbench-lane-symbol {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 6px;
+  color: #f5cf78;
+  background: rgba(115, 81, 28, 0.72);
+}
+
+.crafting-workbench-lane .crafter-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.workbench-move-button {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(238, 194, 97, 0.58);
+  border-radius: 7px;
+  color: #ffe6a9;
+  background: rgba(98, 72, 30, 0.7);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.crafting-workbench-materials {
+  display: grid;
+  gap: 7px;
+}
+
+.workbench-material {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid rgba(77, 106, 130, 0.76);
+  border-radius: 7px;
+  color: #eaf3ff;
+  background: rgba(30, 50, 65, 0.86);
+  cursor: grab;
+  font: inherit;
+  text-align: left;
+}
+
+.workbench-material:hover,
+.workbench-material.selected {
+  border-color: #efc261;
+  background: rgba(83, 65, 34, 0.86);
+}
+
+.workbench-material:active {
+  cursor: grabbing;
+}
+
+.workbench-material span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workbench-material strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.77rem;
+}
+
+.workbench-material small {
+  overflow: hidden;
+  color: #adc0d0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.67rem;
+}
+
+.workbench-material b {
   color: #f4ce79;
+  font-size: 0.75rem;
+}
+
+.workbench-empty {
+  margin: 0;
+  padding: 13px 5px;
+  border: 1px dashed rgba(103, 144, 173, 0.58);
+  border-radius: 7px;
+  color: #8eaabd;
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+.tree-reset-layout-button {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 11px;
+  border: 1px solid rgba(135, 161, 187, 0.68);
+  border-radius: 8px;
+  color: #dbeaf5;
+  background: rgba(38, 67, 90, 0.72);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
 }
 
 .ingredient-panel {
