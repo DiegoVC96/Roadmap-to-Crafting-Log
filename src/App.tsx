@@ -695,6 +695,25 @@ function getCompletedCount(crafter: Crafter) {
   ).length
 }
 
+function selectCrafterFromMenu(crafterId: CrafterId) {
+  const firstPendingRange = recipeLevelRanges.find((range) =>
+    recipes.some(
+      (recipe) =>
+        recipe.crafter === crafterId &&
+        (recipe.category ?? 'level') === 'level' &&
+        !completedRecipeIds.includes(recipe.id) &&
+        getRecipeLevelRangeStart(recipe.level) === range.start,
+    ),
+  )
+
+  setSelectedCrafterId(crafterId)
+  setSearchText('')
+  setSelectedRecipe(null)
+  setRecipeCategoryFilter('level')
+  setRecipeFilter('pending')
+  setLevelFilter(firstPendingRange ? String(firstPendingRange.start) : 'all')
+}
+
 function toggleRecipe(recipeId: string) {
   setCompletedRecipeIds((currentIds) =>
     currentIds.includes(recipeId)
@@ -1499,6 +1518,12 @@ useEffect(() => {
 
   return (
     <main className="app">
+      <div className="app-header">
+        <a className="app-header-brand" href="#crafting-log">
+          Roadmap to Crafting Log
+        </a>
+        <AccountActions user={currentUser} />
+      </div>
       <header className="hero">
         <p className="eyebrow">FINAL FANTASY XIV</p>
         <img
@@ -2612,56 +2637,56 @@ if (isMaterialsRoadmapOpen) {
         <p className="subtitle">
           Completa el crafting log de tus ocho Disciplines of the Hand.
         </p>
-        <AccountActions user={currentUser} />
         {progressSyncError && <p className="progress-sync-error">{progressSyncError}</p>}
-
-        <button
-          className="load-button"
-          onClick={handleLoadRecipes}
-          disabled={isLoading}
-        >
-          {isLoading
-            ? 'Cargando crafting log…'
-            : hasLoadedRecipes
-              ? 'Actualizar crafting log'
-              : 'Cargar crafting log real'}
-        </button>
-
-        <button
-          className="reset-button"
-          type="button"
-          onClick={resetProgress}
-          disabled={completedRecipes.length === 0}
+        <div className="main-actions">
+          <button
+            className="load-button"
+            onClick={handleLoadRecipes}
+            disabled={isLoading}
           >
-          Reiniciar progreso
-        </button>
+            {isLoading
+              ? 'Cargando crafting log…'
+              : hasLoadedRecipes
+                ? 'Actualizar crafting log'
+                : 'Cargar crafting log real'}
+          </button>
 
-        <button
-          className="materials-roadmap-button"
-          type="button"
-          onClick={() => setIsMaterialsRoadmapOpen(true)}
-          disabled={!hasLoadedRecipes}
+          <button
+            className="materials-roadmap-button"
+            type="button"
+            onClick={() => setIsMaterialsRoadmapOpen(true)}
+            disabled={!hasLoadedRecipes}
           >
-          {`Ver materiales pendientes (${materialTotals.length})`}
-        </button>
+            {`Materiales pendientes (${materialTotals.length})`}
+          </button>
 
-        <button
-          className="free-trial-button"
-          type="button"
-          onClick={() => setIsFreeTrialStorageOpen(true)}
-          disabled={!hasLoadedRecipes}
-        >
-          Mochila Free Trial
-        </button>
+          <button
+            className="free-trial-button"
+            type="button"
+            onClick={() => setIsFreeTrialStorageOpen(true)}
+            disabled={!hasLoadedRecipes}
+          >
+            Mochila Free Trial
+          </button>
 
-        <button
-          className="crafting-tree-button"
-          type="button"
-          onClick={() => openCraftingTree()}
-          disabled={!hasLoadedRecipes}
-        >
-          Ver árbol de fabricación
-        </button>
+          <button
+            className="crafting-tree-button"
+            type="button"
+            onClick={() => openCraftingTree()}
+            disabled={!hasLoadedRecipes}
+          >
+            Árbol de fabricación
+          </button>
+
+          <button
+            className="reset-button"
+            type="button"
+            onClick={resetProgress}
+            disabled={completedRecipes.length === 0}
+          >
+            Reiniciar progreso
+          </button>
+        </div>
       </header>
 
       {accessState.isAdmin && <AdminAccessPanel adminUserId={currentUser.uid} />}
@@ -2698,50 +2723,41 @@ if (isMaterialsRoadmapOpen) {
         </section>
       )}
 
-      <section className="crafting-grid" aria-label="Profesiones de crafting">
-        {crafters.map((crafter) => {
-          const totalForCrafter = recipes.filter(
-            (recipe) => recipe.crafter === crafter.id,
-          ).length
-          const completed = getCompletedCount(crafter)
-          const progress =
-            totalForCrafter === 0
-              ? 0
-              : Math.round((completed / totalForCrafter) * 100)
-          const isSelected = crafter.id === selectedCrafterId
-
-          return (
-            <button
-              className={`crafter-card ${isSelected ? 'selected' : ''}`}
-              key={crafter.id}
-              onClick={() => setSelectedCrafterId(crafter.id)}
-            >
-              <span className="crafter-icon" aria-hidden="true">
-                <img className="crafter-job-icon" src={crafter.icon} alt="" />
-              </span>
-              <span>
-                <h2>{crafter.id}</h2>
-                <p>
-                  {completed} / {totalForCrafter} recetas
-                </p>
-              </span>
-              <strong className={progress === 100 ? 'crafter-complete' : ''}>
-                {progress === 100 ? '100% ✓' : `${progress}%`}
-              </strong>
-              <span
-                className="crafter-progress-track"
-                role="progressbar"
-                aria-label={`Progreso de ${crafter.id}`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={progress}
-              >
-                <i style={{ width: `${progress}%` }} />
-              </span>
-            </button>
-          )
-        })}
-      </section>
+      <div className="crafting-log-layout">
+      <aside className="crafter-sidebar" aria-label="Elegir profesión">
+        <p className="section-label">PROFESIÓN</p>
+        <label>
+          Elige una profesión
+          <select
+            value={selectedCrafterId}
+            onChange={(event) => selectCrafterFromMenu(event.target.value as CrafterId)}
+          >
+            {crafters.map((crafter) => {
+              const total = recipes.filter((recipe) => recipe.crafter === crafter.id).length
+              const completed = getCompletedCount(crafter)
+              return (
+                <option key={crafter.id} value={crafter.id}>
+                  {crafter.id} · {completed}/{total}
+                </option>
+              )
+            })}
+          </select>
+        </label>
+        <div className="crafter-sidebar-current">
+          <span className="crafter-icon" aria-hidden="true">
+            <img className="crafter-job-icon" src={selectedCrafter.icon} alt="" />
+          </span>
+          <div>
+            <strong>{selectedCrafter.id}</strong>
+            <small>
+              {getCompletedCount(selectedCrafter)} de {selectedRecipes.length} recetas completadas
+            </small>
+          </div>
+        </div>
+        <p className="crafter-sidebar-note">
+          Al cambiar de profesión verás el primer tramo de nivel que aún tenga recetas pendientes.
+        </p>
+      </aside>
 
       <section className="recipe-panel" id="crafting-log">
         <div className="recipe-panel-heading">
@@ -3021,6 +3037,7 @@ if (isMaterialsRoadmapOpen) {
   </>
 )}
       </section>
+      </div>
     </main>
   )
 }

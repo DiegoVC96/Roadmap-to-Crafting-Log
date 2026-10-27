@@ -2210,6 +2210,126 @@ button:focus-visible {
   letter-spacing: 0.02em;
 }
 
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 10px 14px;
+  border: 1px solid rgba(101, 132, 154, 0.56);
+  border-radius: 12px;
+  background: rgba(10, 20, 29, 0.76);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
+}
+
+.app-header-brand {
+  color: #f4ce79;
+  font-family: Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.app-header .account-actions {
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.main-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 760px;
+  margin: 22px auto 0;
+}
+
+.main-actions .load-button,
+.main-actions .reset-button,
+.main-actions .materials-roadmap-button,
+.main-actions .free-trial-button,
+.main-actions .crafting-tree-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+}
+
+.main-actions .reset-button {
+  margin-top: 0;
+}
+
+.crafting-log-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+.crafter-sidebar {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(92, 126, 152, 0.66);
+  border-radius: 14px;
+  background: rgba(18, 34, 48, 0.84);
+}
+
+.crafter-sidebar .section-label {
+  margin-bottom: 0;
+}
+
+.crafter-sidebar label {
+  display: grid;
+  gap: 7px;
+  color: #d8e7f4;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.crafter-sidebar select {
+  width: 100%;
+  padding: 11px 10px;
+  border: 1px solid #7295b5;
+  border-radius: 8px;
+  color: #fff1cf;
+  background: rgba(7, 16, 24, 0.86);
+  font: inherit;
+}
+
+.crafter-sidebar-current {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(231, 184, 90, 0.5);
+  border-radius: 10px;
+  background: rgba(79, 58, 27, 0.42);
+}
+
+.crafter-sidebar-current div {
+  display: grid;
+  gap: 3px;
+}
+
+.crafter-sidebar-current strong {
+  color: #ffe2a0;
+  font-family: Georgia, serif;
+}
+
+.crafter-sidebar-current small,
+.crafter-sidebar-note {
+  margin: 0;
+  color: #b8cad8;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .crafter-card:hover h2,
 .crafter-card.selected h2 {
   color: #fff1bd;
@@ -2749,6 +2869,23 @@ button:focus-visible {
     margin-bottom: 28px;
   }
 
+  .app-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .app-header .account-actions {
+    justify-content: center;
+  }
+
+  .main-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: min(100%, 360px);
+  }
+
   .hero .load-button,
   .hero .reset-button,
   .hero .materials-roadmap-button,
@@ -2757,6 +2894,15 @@ button:focus-visible {
     width: min(100%, 360px);
     min-height: 44px;
     margin: 6px auto;
+  }
+
+  .crafting-log-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .crafter-sidebar {
+    position: static;
   }
 
   .overall-progress,
