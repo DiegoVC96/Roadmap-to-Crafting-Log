@@ -2211,6 +2211,9 @@ button:focus-visible {
 }
 
 .app-header {
+  position: sticky;
+  top: 10px;
+  z-index: 40;
   display: flex;
   justify-content: space-between;
   gap: 18px;
@@ -2220,6 +2223,7 @@ button:focus-visible {
   border: 1px solid rgba(101, 132, 154, 0.56);
   border-radius: 12px;
   background: rgba(10, 20, 29, 0.76);
+  backdrop-filter: blur(12px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
 }
 
@@ -2505,9 +2509,45 @@ button:focus-visible {
   font-size: 0.8rem;
 }
 
+.item-source-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.item-source-pagination button {
+  padding: 7px 10px;
+  border: 1px solid rgba(136, 181, 151, 0.7);
+  border-radius: 7px;
+  color: #dff3e1;
+  background: rgba(30, 73, 52, 0.72);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.item-source-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.item-source-pagination span {
+  color: #c9dbcd;
+  font-size: 0.82rem;
+}
+
 .material-guide-page {
   max-width: 900px;
   margin: 0 auto;
+}
+
+.material-guide-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 310px);
+  gap: 18px;
+  align-items: start;
 }
 
 .back-to-materials-button {
@@ -2607,6 +2647,38 @@ button:focus-visible {
   border: 1px solid rgba(116, 174, 136, 0.48);
   border-radius: 10px;
   background: rgba(27, 61, 48, 0.34);
+}
+
+.material-guide-inventory {
+  position: sticky;
+  top: 78px;
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.material-guide-inventory .section-label {
+  margin-bottom: 5px;
+}
+
+.material-inventory-counts {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(7, 24, 17, 0.32);
+}
+
+.material-inventory-counts span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #c8dfca;
+  font-size: 0.84rem;
+}
+
+.material-inventory-counts b {
+  color: #f4ce79;
 }
 
 .material-inventory-panel h3 {
@@ -2899,6 +2971,14 @@ button:focus-visible {
   .crafting-log-layout {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .material-guide-content {
+    grid-template-columns: 1fr;
+  }
+
+  .material-guide-inventory {
+    position: static;
   }
 
   .crafter-sidebar {

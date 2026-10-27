@@ -233,6 +233,17 @@ const crafters: Crafter[] = [
   },
 ]
 
+function AppHeader({ user }: { user: User }) {
+  return (
+    <div className="app-header">
+      <a className="app-header-brand" href="#crafting-log">
+        Roadmap to Crafting Log
+      </a>
+      <AccountActions user={user} />
+    </div>
+  )
+}
+
 function buildCraftingGraph(
   node: CraftingTreeNode,
   nodes = new Map<string, CraftingGraphNode>(),
@@ -346,6 +357,7 @@ function App() {
   const [selectedMaterialSource, setSelectedMaterialSource] =
     useState<BaseMaterialTotal | null>(null)
   const [itemSources, setItemSources] = useState<ItemSource[]>([])
+  const [itemSourcesPage, setItemSourcesPage] = useState(1)
   const [isLoadingItemSources, setIsLoadingItemSources] = useState(false)
   const [isItemSourcesPageOpen, setIsItemSourcesPageOpen] = useState(false)
   const [itemSourcesError, setItemSourcesError] = useState<string | null>(null)
@@ -1130,6 +1142,7 @@ async function openItemSources(material: BaseMaterialTotal) {
   setIsItemSourcesPageOpen(true)
   setSelectedMaterialSource(material)
   setItemSources([])
+  setItemSourcesPage(1)
   setItemSourcesError(null)
   setIsLoadingItemSources(true)
 
@@ -1515,15 +1528,19 @@ useEffect(() => {
   const isInFarmingSession = farmingSessionItemIds.includes(
     selectedMaterialSource.itemId,
   )
+  const itemSourcesPerPage = 5
+  const totalItemSourcePages = Math.max(
+    1,
+    Math.ceil(itemSources.length / itemSourcesPerPage),
+  )
+  const visibleItemSources = itemSources.slice(
+    (itemSourcesPage - 1) * itemSourcesPerPage,
+    itemSourcesPage * itemSourcesPerPage,
+  )
 
   return (
     <main className="app">
-      <div className="app-header">
-        <a className="app-header-brand" href="#crafting-log">
-          Roadmap to Crafting Log
-        </a>
-        <AccountActions user={currentUser} />
-      </div>
+      <AppHeader user={currentUser} />
       <header className="hero">
         <p className="eyebrow">FINAL FANTASY XIV</p>
         <img
@@ -1535,7 +1552,6 @@ useEffect(() => {
         <p className="subtitle">
           Alternativas para conseguir materiales sin fabricarlos.
         </p>
-        <AccountActions user={currentUser} />
         {progressSyncError && <p className="progress-sync-error">{progressSyncError}</p>}
       </header>
 
@@ -1570,6 +1586,7 @@ useEffect(() => {
           </div>
         </div>
 
+        <div className="material-guide-content">
         <section className="material-sources-panel material-guide-sources">
           <div className="material-breakdown">
             <h3>Por qué necesitas este material</h3>
@@ -1588,26 +1605,6 @@ useEffect(() => {
                 </li>
               ))}
             </ul>
-          </div>
-
-          <div className="material-inventory-panel">
-            <div>
-              <h3>Tu inventario</h3>
-              <p>Indica cuántas unidades de este material ya tienes.</p>
-            </div>
-            <label>
-              Ya tengo
-              <input
-                type="number"
-                min="0"
-                step="1"
-                inputMode="numeric"
-                value={ownedQuantity}
-                onChange={(event) =>
-                  updateInventory(selectedMaterialSource.itemId, event.target.value)
-                }
-              />
-            </label>
           </div>
 
           <button
@@ -1663,8 +1660,9 @@ useEffect(() => {
   )}
 
           {!isLoadingItemSources && itemSources.length > 0 && (
+            <>
             <ul className="item-source-list">
-              {itemSources.map((source, index) => (
+              {visibleItemSources.map((source, index) => (
                 <li key={`${source.kind}-${source.name}-${index}`}>
                   <span className="item-source-kind">
                     {source.kind === 'gathering'
@@ -1681,8 +1679,54 @@ useEffect(() => {
                 </li>
               ))}
             </ul>
+            {totalItemSourcePages > 1 && (
+              <nav className="item-source-pagination" aria-label="Páginas de fuentes de obtención">
+                <button
+                  type="button"
+                  onClick={() => setItemSourcesPage((current) => Math.max(1, current - 1))}
+                  disabled={itemSourcesPage === 1}
+                >
+                  ← Anterior
+                </button>
+                <span>Página {itemSourcesPage} de {totalItemSourcePages}</span>
+                <button
+                  type="button"
+                  onClick={() => setItemSourcesPage((current) => Math.min(totalItemSourcePages, current + 1))}
+                  disabled={itemSourcesPage === totalItemSourcePages}
+                >
+                  Siguiente →
+                </button>
+              </nav>
+            )}
+            </>
           )}
         </section>
+        <aside className="material-inventory-panel material-guide-inventory">
+          <div>
+            <p className="section-label">TU INVENTARIO</p>
+            <h3>{selectedMaterialSource.name}</h3>
+            <p>Registra la cantidad que ya tienes para actualizar lo pendiente.</p>
+          </div>
+          <div className="material-inventory-counts">
+            <span>Necesitas <b>×{selectedMaterialSource.quantity.toLocaleString()}</b></span>
+            <span>En inventario <b>×{ownedQuantity.toLocaleString()}</b></span>
+            <span>Faltan <b>×{remainingQuantity.toLocaleString()}</b></span>
+          </div>
+          <label>
+            Ya tengo
+            <input
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={ownedQuantity}
+              onChange={(event) =>
+                updateInventory(selectedMaterialSource.itemId, event.target.value)
+              }
+            />
+          </label>
+        </aside>
+        </div>
       </section>
     </main>
   )
@@ -1704,12 +1748,12 @@ useEffect(() => {
 
     return (
       <main className="app">
+        <AppHeader user={currentUser} />
         <header className="hero">
           <p className="eyebrow">FINAL FANTASY XIV</p>
           <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
           <h1>Fabricar vs. comprar</h1>
           <p className="subtitle">Comparación de coste estimado para {selectedCostRecipe.name}.</p>
-          <AccountActions user={currentUser} />
         </header>
         <section className="recipe-cost-page">
           <button className="back-to-materials-button" type="button" onClick={() => setIsRecipeCostOpen(false)}>
@@ -1780,12 +1824,12 @@ useEffect(() => {
 
     return (
       <main className="app">
+        <AppHeader user={currentUser} />
         <header className="hero">
           <p className="eyebrow">FINAL FANTASY XIV</p>
           <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
           <h1>Plan de adquisición</h1>
           <p className="subtitle">La opción recomendada para cada material pendiente.</p>
-          <AccountActions user={currentUser} />
         </header>
         <section className="smart-plan-page">
           <button className="back-to-materials-button" type="button" onClick={() => setIsSmartPlanOpen(false)}>
@@ -1829,6 +1873,7 @@ useEffect(() => {
   if (isVendorShoppingOpen) {
     return (
       <main className="app">
+        <AppHeader user={currentUser} />
         <header className="hero">
           <p className="eyebrow">FINAL FANTASY XIV</p>
           <img
@@ -1840,7 +1885,6 @@ useEffect(() => {
           <p className="subtitle">
             Materiales pendientes que puedes comprar a vendedores del juego.
           </p>
-          <AccountActions user={currentUser} />
         </header>
 
         <section className="vendor-shopping-page">
@@ -2047,6 +2091,7 @@ useEffect(() => {
   if (isCraftingTreeOpen) {
     return (
       <main className="app">
+        <AppHeader user={currentUser} />
         <header className="hero">
           <p className="eyebrow">FINAL FANTASY XIV</p>
           <img
@@ -2058,7 +2103,6 @@ useEffect(() => {
           <p className="subtitle">
             Explora las recetas intermedias y los materiales base de cada objetivo.
           </p>
-          <AccountActions user={currentUser} />
         </header>
 
         <section className="crafting-tree-page">
@@ -2241,6 +2285,7 @@ useEffect(() => {
 if (isFreeTrialStorageOpen) {
   return (
     <main className="app">
+      <AppHeader user={currentUser} />
       <header className="hero">
         <p className="eyebrow">FINAL FANTASY XIV · FREE TRIAL</p>
         <img className="app-logo" src={appLogo} alt="Emblema de Roadmap to Crafting Log" />
@@ -2248,7 +2293,6 @@ if (isFreeTrialStorageOpen) {
         <p className="subtitle">
           Planifica dónde guardar materiales sin superar tus 140 espacios de inventario y 70 de alforja.
         </p>
-        <AccountActions user={currentUser} />
       </header>
 
       <section className="free-trial-page">
@@ -2374,6 +2418,7 @@ if (isFreeTrialStorageOpen) {
 if (isMaterialsRoadmapOpen) {
   return (
     <main className="app">
+      <AppHeader user={currentUser} />
       <header className="hero">
         <p className="eyebrow">FINAL FANTASY XIV</p>
         <img
@@ -2385,7 +2430,6 @@ if (isMaterialsRoadmapOpen) {
         <p className="subtitle">
           Reúne estos materiales para completar tu crafting log al 100%.
         </p>
-        <AccountActions user={currentUser} />
         {progressSyncError && <p className="progress-sync-error">{progressSyncError}</p>}
       </header>
 
@@ -2626,6 +2670,7 @@ if (isMaterialsRoadmapOpen) {
 
   return (
     <main className="app">
+      <AppHeader user={currentUser} />
       <header className="hero">
         <p className="eyebrow">FINAL FANTASY XIV</p>
         <img
