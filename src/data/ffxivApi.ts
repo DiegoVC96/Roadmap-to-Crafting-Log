@@ -171,7 +171,7 @@ export async function loadRecipePage(after?: number) {
   url.searchParams.set('limit', '500')
   url.searchParams.set(
     'fields',
-    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,IsSpecializationRequired,IsExpert,IsSecondary,SecretRecipeBook.Name,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
+    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,IsSpecializationRequired,IsExpert,SecretRecipeBook.Name,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
   )
 
   if (after !== undefined) {
@@ -203,8 +203,7 @@ export async function loadRecipePage(after?: number) {
       readName(row.fields['SecretRecipeBook.Name'])
     const isSpecialRecipe =
       readBoolean(row.fields.IsSpecializationRequired) ||
-      readBoolean(row.fields.IsExpert) ||
-      readBoolean(row.fields.IsSecondary)
+      readBoolean(row.fields.IsExpert)
 
 const crafter = craftTypeName
   ? craftTypeToCrafter[craftTypeName]
