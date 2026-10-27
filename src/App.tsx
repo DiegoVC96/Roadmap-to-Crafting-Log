@@ -308,6 +308,7 @@ function App() {
   >('level')
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
+  const [isCraftingAssistantOpen, setIsCraftingAssistantOpen] = useState(false)
   const [isFreeTrialStorageOpen, setIsFreeTrialStorageOpen] = useState(false)
   const [freeTrialSearchText, setFreeTrialSearchText] = useState('')
   const [freeTrialStorageByItemId, setFreeTrialStorageByItemId] = useState<
@@ -408,6 +409,36 @@ function App() {
           second.percentage - first.percentage ||
           first.remaining - second.remaining,
       )[0]
+  }, [completedRecipeIds, recipes])
+
+  const craftingAssistantGoals = useMemo(() => {
+    return crafters
+      .map((crafter) => {
+        const pendingLevelRecipes = recipes.filter(
+          (recipe) =>
+            recipe.crafter === crafter.id &&
+            (recipe.category ?? 'level') === 'level' &&
+            !completedRecipeIds.includes(recipe.id),
+        )
+        const nextRange = recipeLevelRanges.find((range) =>
+          pendingLevelRecipes.some(
+            (recipe) => getRecipeLevelRangeStart(recipe.level) === range.start,
+          ),
+        )
+
+        return {
+          crafter,
+          pending: pendingLevelRecipes.length,
+          nextRange,
+          recipesInNextRange: nextRange
+            ? pendingLevelRecipes.filter(
+                (recipe) =>
+                  getRecipeLevelRangeStart(recipe.level) === nextRange.start,
+              ).length
+            : 0,
+        }
+      })
+      .filter((goal) => goal.pending > 0)
   }, [completedRecipeIds, recipes])
 
   const selectedRecipes = recipes.filter(
@@ -1514,6 +1545,173 @@ useEffect(() => {
     return (
       <main className="auth-page">
         <p className="empty-state">Cargando tu progreso guardado…</p>
+      </main>
+    )
+  }
+
+  if (isCraftingAssistantOpen) {
+    const primaryGoal =
+      craftingAssistantGoals.find(
+        (goal) => goal.crafter.id === nextCraftingGoal?.crafter.id,
+      ) ?? craftingAssistantGoals[0]
+    const pendingMaterialTypes = materialTotals.filter(
+      (material) =>
+        material.quantity - (inventoryByItemId[String(material.itemId)] ?? 0) > 0,
+    ).length
+    const reservedFreeTrialSlots =
+      freeTrialStorageSummary.inventory + freeTrialStorageSummary.saddlebag
+
+    return (
+      <main className="app">
+        <AppHeader user={currentUser} />
+        <header className="hero">
+          <p className="eyebrow">PLANIFICACIÓN PERSONAL</p>
+          <img
+            className="app-logo"
+            src={appLogo}
+            alt="Emblema de Roadmap to Crafting Log"
+          />
+          <h1>Asistente de crafting</h1>
+          <p className="subtitle">
+            Un plan claro para avanzar en tu crafting log, materiales y espacio Free Trial.
+          </p>
+        </header>
+
+        <section className="crafting-assistant-page">
+          <button
+            className="back-to-materials-button"
+            type="button"
+            onClick={() => setIsCraftingAssistantOpen(false)}
+          >
+            ← Volver al crafting log
+          </button>
+
+          <div className="crafting-assistant-heading">
+            <div>
+              <p className="section-label">TU SIGUIENTE SESIÓN</p>
+              <h2>Decide qué fabricar y qué preparar</h2>
+              <p>
+                El asistente toma tu progreso real y prioriza el próximo tramo de recetas por profesión.
+              </p>
+            </div>
+          </div>
+
+          <div className="assistant-summary" aria-label="Resumen del asistente">
+            <article>
+              <span>Recetas pendientes</span>
+              <strong>{(totalRecipes - completedRecipes.length).toLocaleString()}</strong>
+              <small>de {totalRecipes.toLocaleString()} en total</small>
+            </article>
+            <article>
+              <span>Materiales por conseguir</span>
+              <strong>{pendingMaterialTypes.toLocaleString()}</strong>
+              <small>tipos de material pendientes</small>
+            </article>
+            <article>
+              <span>Espacio Free Trial</span>
+              <strong>{reservedFreeTrialSlots}/210</strong>
+              <small>inventario y saddlebag asignados</small>
+            </article>
+          </div>
+
+          {primaryGoal ? (
+            <section className="assistant-recommendation">
+              <img src={primaryGoal.crafter.icon} alt="" />
+              <div>
+                <p className="section-label">RECOMENDACIÓN PRINCIPAL</p>
+                <h3>
+                  {primaryGoal.crafter.id} · nivel {primaryGoal.nextRange?.label ?? 'pendiente'}
+                </h3>
+                <p>
+                  Tienes {primaryGoal.recipesInNextRange.toLocaleString()} recetas pendientes en este tramo.
+                  Empieza aquí para mantener el avance ordenado por niveles.
+                </p>
+              </div>
+              <button
+                className="assistant-primary-button"
+                type="button"
+                onClick={() => {
+                  setIsCraftingAssistantOpen(false)
+                  selectCrafterFromMenu(primaryGoal.crafter.id)
+                  window.requestAnimationFrame(() => {
+                    document.getElementById('crafting-log')?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    })
+                  })
+                }}
+              >
+                Abrir recetas
+              </button>
+            </section>
+          ) : (
+            <section className="assistant-complete-state">
+              <h3>¡Todo listo!</h3>
+              <p>Completaste todas las recetas Level-based disponibles.</p>
+            </section>
+          )}
+
+          {craftingAssistantGoals.length > 0 && (
+            <section className="assistant-goals">
+              <h3>Próximos tramos por profesión</h3>
+              <div>
+                {craftingAssistantGoals.map((goal) => (
+                  <button
+                    className="assistant-goal-row"
+                    key={goal.crafter.id}
+                    type="button"
+                    onClick={() => {
+                      setIsCraftingAssistantOpen(false)
+                      selectCrafterFromMenu(goal.crafter.id)
+                    }}
+                  >
+                    <img src={goal.crafter.icon} alt="" />
+                    <span>
+                      <strong>{goal.crafter.id}</strong>
+                      <small>
+                        Próximo: nivel {goal.nextRange?.label ?? 'pendiente'} · {goal.pending.toLocaleString()} por completar
+                      </small>
+                    </span>
+                    <b>{goal.recipesInNextRange} recetas</b>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="assistant-actions">
+            <button
+              className="smart-plan-button"
+              type="button"
+              onClick={() => {
+                setIsCraftingAssistantOpen(false)
+                openSmartPlan()
+              }}
+            >
+              Generar plan inteligente
+            </button>
+            <button
+              className="free-trial-button"
+              type="button"
+              onClick={() => {
+                setIsCraftingAssistantOpen(false)
+                setIsFreeTrialStorageOpen(true)
+              }}
+            >
+              Revisar mochila Free Trial
+            </button>
+            <button
+              className="materials-roadmap-button"
+              type="button"
+              onClick={() => {
+                setIsCraftingAssistantOpen(false)
+                setIsMaterialsRoadmapOpen(true)
+              }}
+            >
+              Ver materiales pendientes
+            </button>
+          </section>
+        </section>
       </main>
     )
   }
@@ -2703,6 +2901,15 @@ if (isMaterialsRoadmapOpen) {
             disabled={!hasLoadedRecipes}
           >
             {`Materiales pendientes (${materialTotals.length})`}
+          </button>
+
+          <button
+            className="assistant-button"
+            type="button"
+            onClick={() => setIsCraftingAssistantOpen(true)}
+            disabled={!hasLoadedRecipes}
+          >
+            Asistente de crafting
           </button>
 
           <button

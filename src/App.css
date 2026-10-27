@@ -2252,6 +2252,7 @@ button:focus-visible {
 .main-actions .load-button,
 .main-actions .reset-button,
 .main-actions .materials-roadmap-button,
+.main-actions .assistant-button,
 .main-actions .free-trial-button,
 .main-actions .crafting-tree-button {
   display: inline-flex;
@@ -2263,6 +2264,169 @@ button:focus-visible {
 
 .main-actions .reset-button {
   margin-top: 0;
+}
+
+.assistant-button {
+  border-color: #9178bb;
+  background: linear-gradient(135deg, #493967, #2a5061);
+  color: #f2e8ff;
+}
+
+.crafting-assistant-page {
+  margin-bottom: 28px;
+  padding: 28px;
+  border: 1px solid #7b719d;
+  border-radius: 18px;
+  background: rgba(25, 27, 51, 0.93);
+}
+
+.crafting-assistant-heading {
+  margin: 20px 0 18px;
+}
+
+.crafting-assistant-heading h2 {
+  margin: 2px 0 6px;
+  color: #f7d98d;
+  font-family: Georgia, serif;
+  font-size: 1.65rem;
+}
+
+.crafting-assistant-heading p:not(.section-label) {
+  max-width: 710px;
+  margin: 0;
+  color: #cbd5e6;
+}
+
+.assistant-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.assistant-summary article {
+  display: grid;
+  gap: 6px;
+  padding: 15px;
+  border: 1px solid rgba(132, 126, 183, 0.62);
+  border-radius: 11px;
+  background: rgba(34, 35, 69, 0.7);
+}
+
+.assistant-summary span,
+.assistant-summary small {
+  color: #c9d0e7;
+  font-size: 0.84rem;
+}
+
+.assistant-summary strong {
+  color: #c9f0ad;
+  font-size: 1.45rem;
+}
+
+.assistant-recommendation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(238, 202, 121, 0.76);
+  border-radius: 13px;
+  background: linear-gradient(120deg, rgba(92, 66, 39, 0.52), rgba(34, 50, 72, 0.66));
+}
+
+.assistant-recommendation > img,
+.assistant-goal-row img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.assistant-recommendation h3 {
+  margin: 2px 0 5px;
+  color: #ffe2a1;
+  font-family: Georgia, serif;
+  font-size: 1.28rem;
+}
+
+.assistant-recommendation p:not(.section-label),
+.assistant-complete-state p {
+  margin: 0;
+  color: #d5ddeb;
+}
+
+.assistant-primary-button {
+  min-height: 42px;
+  border-color: #edc96e;
+  background: linear-gradient(135deg, #906c2d, #634719);
+  color: #fff5cf;
+}
+
+.assistant-goals {
+  margin-top: 22px;
+}
+
+.assistant-goals > h3,
+.assistant-complete-state h3 {
+  margin: 0 0 10px;
+  color: #ead9ae;
+  font-family: Georgia, serif;
+}
+
+.assistant-goals > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.assistant-goal-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid rgba(105, 119, 165, 0.62);
+  border-radius: 10px;
+  background: rgba(17, 23, 46, 0.7);
+  text-align: left;
+}
+
+.assistant-goal-row:hover {
+  border-color: #d8b766;
+  transform: translateY(-1px);
+}
+
+.assistant-goal-row span {
+  display: grid;
+  gap: 3px;
+}
+
+.assistant-goal-row strong {
+  color: #edf1ff;
+}
+
+.assistant-goal-row small {
+  color: #c2cee3;
+}
+
+.assistant-goal-row b {
+  color: #c7edae;
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.assistant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.assistant-complete-state {
+  padding: 18px;
+  border: 1px solid rgba(120, 182, 127, 0.62);
+  border-radius: 12px;
+  background: rgba(34, 77, 57, 0.4);
 }
 
 .crafting-log-layout {
@@ -2961,6 +3125,7 @@ button:focus-visible {
   .hero .load-button,
   .hero .reset-button,
   .hero .materials-roadmap-button,
+  .hero .assistant-button,
   .hero .free-trial-button,
   .hero .crafting-tree-button {
     width: min(100%, 360px);
@@ -3025,8 +3190,26 @@ button:focus-visible {
 
   .recipe-cost-page,
   .smart-plan-page,
-  .free-trial-page {
+  .free-trial-page,
+  .crafting-assistant-page {
     padding: 18px;
+  }
+
+  .assistant-summary,
+  .assistant-goals > div {
+    grid-template-columns: 1fr;
+  }
+
+  .assistant-recommendation {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .assistant-recommendation .assistant-primary-button {
+    grid-column: 1 / -1;
+  }
+
+  .assistant-actions {
+    display: grid;
   }
 
   .vendor-shopping-heading {
