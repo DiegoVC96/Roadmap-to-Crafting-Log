@@ -1,4 +1,4 @@
-import { type ChangeEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import './App.css'
 import appLogo from './assets/roadmap-logo.png'
@@ -261,20 +261,6 @@ function buildCraftingGraph(
   return { nodes: [...nodes.values()], edges: [...edges.values()] }
 }
 
-function readMarketScope(value: unknown): MarketScope | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null
-  }
-
-  const scope = value as { type?: unknown; name?: unknown }
-
-  return (scope.type === 'world' || scope.type === 'dataCenter') &&
-    typeof scope.name === 'string' &&
-    scope.name.length > 0
-    ? { type: scope.type, name: scope.name }
-    : null
-}
-
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
@@ -306,6 +292,9 @@ function App() {
   const [recipeFilter, setRecipeFilter] = useState<
     'all' | 'pending' | 'completed'
   >('all')
+  const [recipeCategoryFilter, setRecipeCategoryFilter] = useState<
+    'level' | 'special' | 'master'
+  >('level')
   const [levelFilter, setLevelFilter] = useState('all')
   const [isMaterialsRoadmapOpen, setIsMaterialsRoadmapOpen] = useState(false)
   const [isFreeTrialStorageOpen, setIsFreeTrialStorageOpen] = useState(false)
@@ -367,8 +356,6 @@ function App() {
   const [farmingSessionItemIds, setFarmingSessionItemIds] = useState<number[]>([])
   const [loadedProgressUserId, setLoadedProgressUserId] = useState<string | null>(null)
   const [progressSyncError, setProgressSyncError] = useState<string | null>(null)
-  const [backupMessage, setBackupMessage] = useState<string | null>(null)
-  const backupInputRef = useRef<HTMLInputElement>(null)
 
   const selectedCrafter = crafters.find(
     (crafter) => crafter.id === selectedCrafterId,
@@ -436,21 +423,20 @@ const visibleSelectedRecipes = selectedRecipes.filter((recipe) => {
     levelFilter === 'all' ||
     getRecipeLevelRangeStart(recipe.level) === Number(levelFilter)
 
-  return matchesSearch && matchesFilter && matchesLevel
+  const matchesCategory =
+    (recipe.category ?? 'level') === recipeCategoryFilter
+
+  return matchesSearch && matchesFilter && matchesLevel && matchesCategory
 })
 
-const visibleRecipesByLevelRange = useMemo(
-  () =>
-    recipeLevelRanges
-      .map((range) => ({
-        ...range,
-        recipes: visibleSelectedRecipes.filter(
-          (recipe) => getRecipeLevelRangeStart(recipe.level) === range.start,
-        ),
-      }))
-      .filter((range) => range.recipes.length > 0),
-  [visibleSelectedRecipes],
-)
+const visibleRecipesByLevelRange = recipeLevelRanges
+  .map((range) => ({
+    ...range,
+    recipes: visibleSelectedRecipes.filter(
+      (recipe) => getRecipeLevelRangeStart(recipe.level) === range.start,
+    ),
+  }))
+  .filter((range) => range.recipes.length > 0)
 
 const materialTotals = useMemo(() => {
   return calculateBaseMaterialTotals(
@@ -864,127 +850,6 @@ function downloadMaterialList() {
   link.click()
   link.remove()
   URL.revokeObjectURL(downloadUrl)
-}
-
-function downloadProgressBackup() {
-  const backup = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    completedRecipeIds,
-    inventoryByItemId,
-    farmingSessionItemIds,
-    marketScope,
-    freeTrialStorageByItemId,
-    craftingTreePositions,
-  }
-  const file = new Blob([JSON.stringify(backup, null, 2)], {
-    type: 'application/json',
-  })
-  const downloadUrl = URL.createObjectURL(file)
-  const link = document.createElement('a')
-
-  link.href = downloadUrl
-  link.download = 'roadmap-crafting-log-respaldo.json'
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(downloadUrl)
-  setBackupMessage('Respaldo descargado. Guárdalo en un lugar seguro.')
-}
-
-async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-
-  if (!file) {
-    return
-  }
-
-  try {
-    const backup: unknown = JSON.parse(await file.text())
-
-    if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
-      throw new Error('Formato inválido')
-    }
-
-    const data = backup as Record<string, unknown>
-    const restoredRecipeIds = Array.isArray(data.completedRecipeIds)
-      ? data.completedRecipeIds.filter(
-          (recipeId): recipeId is string => typeof recipeId === 'string',
-        )
-      : []
-    const restoredInventory =
-      data.inventoryByItemId &&
-      typeof data.inventoryByItemId === 'object' &&
-      !Array.isArray(data.inventoryByItemId)
-        ? Object.fromEntries(
-            Object.entries(data.inventoryByItemId).filter(
-              ([itemId, quantity]) =>
-                /^\d+$/.test(itemId) &&
-                typeof quantity === 'number' &&
-                Number.isFinite(quantity) &&
-                quantity >= 0,
-            ),
-          ) as Record<string, number>
-        : {}
-    const restoredFarmingSessionItemIds = Array.isArray(data.farmingSessionItemIds)
-      ? data.farmingSessionItemIds.filter(
-          (itemId): itemId is number =>
-            typeof itemId === 'number' &&
-            Number.isSafeInteger(itemId) &&
-            itemId > 0,
-        )
-      : []
-    const restoredFreeTrialStorage =
-      data.freeTrialStorageByItemId &&
-      typeof data.freeTrialStorageByItemId === 'object' &&
-      !Array.isArray(data.freeTrialStorageByItemId)
-        ? Object.fromEntries(
-            Object.entries(data.freeTrialStorageByItemId).filter(
-              ([itemId, location]) =>
-                /^\d+$/.test(itemId) &&
-                (location === 'inventory' || location === 'saddlebag'),
-            ),
-          ) as Record<string, FreeTrialStorageLocation>
-        : {}
-    const restoredCraftingTreePositions =
-      data.craftingTreePositions &&
-      typeof data.craftingTreePositions === 'object' &&
-      !Array.isArray(data.craftingTreePositions)
-        ? Object.fromEntries(
-            Object.entries(data.craftingTreePositions).filter(
-              ([nodeKey, position]) =>
-                nodeKey.length > 0 &&
-                !!position &&
-                typeof position === 'object' &&
-                !Array.isArray(position) &&
-                typeof (position as { x?: unknown }).x === 'number' &&
-                typeof (position as { y?: unknown }).y === 'number',
-            ),
-          ) as Record<string, CraftingGraphPosition>
-        : {}
-    const shouldRestore = window.confirm(
-      '¿Quieres reemplazar tu progreso e inventario actuales con este respaldo?',
-    )
-
-    if (!shouldRestore) {
-      return
-    }
-
-    setCompletedRecipeIds(restoredRecipeIds)
-    setInventoryByItemId(restoredInventory)
-    setFarmingSessionItemIds(restoredFarmingSessionItemIds)
-    setFreeTrialStorageByItemId(restoredFreeTrialStorage)
-    setCraftingTreePositions(restoredCraftingTreePositions)
-    const restoredMarketScope = readMarketScope(data.marketScope)
-    setMarketScope(restoredMarketScope)
-    if (restoredMarketScope) {
-      setMarketScopeType(restoredMarketScope.type)
-    }
-    setBackupMessage('Respaldo restaurado correctamente.')
-  } catch {
-    setBackupMessage('No pudimos leer ese archivo. Selecciona un respaldo de Roadmap to Crafting Log.')
-  }
 }
 
 async function handleOpenIngredients(recipe: FfxivRecipe) {
@@ -2817,30 +2682,6 @@ if (isMaterialsRoadmapOpen) {
         </div>
       </section>
 
-      <section className="progress-backup" aria-label="Respaldo de progreso">
-        <div>
-          <p className="section-label">TUS DATOS</p>
-          <h2>Respaldo de progreso</h2>
-          <p>Guarda o restaura tus recetas completadas y cantidades de inventario.</p>
-        </div>
-        <div className="progress-backup-actions">
-          <button type="button" onClick={downloadProgressBackup}>
-            Descargar respaldo
-          </button>
-          <button type="button" onClick={() => backupInputRef.current?.click()}>
-            Restaurar respaldo
-          </button>
-          <input
-            ref={backupInputRef}
-            className="backup-file-input"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void restoreProgressBackup(event)}
-          />
-        </div>
-        {backupMessage && <p className="backup-message" role="status">{backupMessage}</p>}
-      </section>
-
       {nextCraftingGoal && (
         <section className="next-crafting-goal" aria-label="Siguiente objetivo sugerido">
           <div>
@@ -2933,6 +2774,35 @@ if (isMaterialsRoadmapOpen) {
 
         {hasLoadedRecipes && (
   <>
+    <div className="recipe-category-tabs" role="tablist" aria-label="Categoría de recetas">
+      {([
+        ['level', 'Level-based Recipes'],
+        ['special', 'Special Recipes'],
+        ['master', 'Master Recipes'],
+      ] as const).map(([category, label]) => {
+        const total = selectedRecipes.filter(
+          (recipe) => (recipe.category ?? 'level') === category,
+        ).length
+
+        return (
+          <button
+            aria-selected={recipeCategoryFilter === category}
+            className={recipeCategoryFilter === category ? 'active' : ''}
+            key={category}
+            role="tab"
+            type="button"
+            onClick={() => {
+              setRecipeCategoryFilter(category)
+              setLevelFilter('all')
+              setSelectedRecipe(null)
+            }}
+          >
+            <span>{label}</span>
+            <b>{total}</b>
+          </button>
+        )
+      })}
+    </div>
     <div className="recipe-controls">
       <input
         className="recipe-search"
@@ -2948,7 +2818,9 @@ if (isMaterialsRoadmapOpen) {
         onChange={(event) => setLevelFilter(event.target.value)}
         aria-label="Filtrar por nivel"
         >
-        <option value="all">Todos los niveles</option>
+        <option value="all">
+          {recipeCategoryFilter === 'level' ? 'Todos los niveles' : 'Todos los niveles de receta'}
+        </option>
         {recipeLevelRanges.map((range) => (
           <option key={range.start} value={range.start}>
             Nivel {range.label}
@@ -3029,9 +2901,15 @@ if (isMaterialsRoadmapOpen) {
           <small>
             {isCompleted
               ? 'Completada'
-              : recipe.level
-                ? `Nivel ${recipe.level}`
-                : 'Pendiente'}
+              : recipe.category === 'master'
+                ? recipe.masterRecipeBook
+                  ? `Master · ${recipe.masterRecipeBook}`
+                  : 'Master Recipe'
+                : recipe.category === 'special'
+                  ? 'Special Recipe'
+                  : recipe.level
+                    ? `Nivel ${recipe.level}`
+                    : 'Pendiente'}
           </small>
 
           <button

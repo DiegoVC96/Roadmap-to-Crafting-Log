@@ -20,6 +20,8 @@ export type FfxivRecipe = {
   crafter: CrafterId
   level: number | null
   resultAmount: number
+  category: 'level' | 'special' | 'master'
+  masterRecipeBook: string | null
   ingredients: RecipeIngredient[]
 }
 
@@ -121,6 +123,10 @@ function readIconPath(value: unknown): string | null {
   return typeof path === 'string' ? path : null
 }
 
+function readBoolean(value: unknown) {
+  return value === true || value === 1
+}
+
 function readIngredients(fields: Record<string, unknown>): RecipeIngredient[] {
   const ingredientRows = Array.isArray(fields.Ingredient)
     ? fields.Ingredient
@@ -165,7 +171,7 @@ export async function loadRecipePage(after?: number) {
   url.searchParams.set('limit', '500')
   url.searchParams.set(
     'fields',
-    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
+    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,IsSpecializationRequired,IsExpert,IsSecondary,SecretRecipeBook.Name,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
   )
 
   if (after !== undefined) {
@@ -192,6 +198,13 @@ export async function loadRecipePage(after?: number) {
 
     const resultItemId = readRowId(row.fields.ItemResult)
     const iconPath = readIconPath(row.fields.ItemResult)
+    const masterRecipeBook =
+      readName(row.fields.SecretRecipeBook) ??
+      readName(row.fields['SecretRecipeBook.Name'])
+    const isSpecialRecipe =
+      readBoolean(row.fields.IsSpecializationRequired) ||
+      readBoolean(row.fields.IsExpert) ||
+      readBoolean(row.fields.IsSecondary)
 
 const crafter = craftTypeName
   ? craftTypeToCrafter[craftTypeName]
@@ -218,6 +231,12 @@ if (!crafter || !recipeName || resultItemId === null) {
           row.fields.AmountResult > 0
             ? row.fields.AmountResult
             : 1,
+        category: masterRecipeBook
+          ? 'master'
+          : isSpecialRecipe
+            ? 'special'
+            : 'level',
+        masterRecipeBook,
       },
     ]
   })
