@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "quality": "npm run lint && npm run build",
+    "deploy:hosting": "npm run quality && npx firebase-tools deploy --only hosting --project roadmap-to-crafting-log"
   },
   "dependencies": {
     "firebase": "^13.1.0",

@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -88,6 +89,37 @@ export async function loadAccessRequests() {
           : 'pending',
     } satisfies AccessRequest
   })
+}
+
+export function subscribeToAccessRequests(
+  onRequests: (requests: AccessRequest[]) => void,
+  onError: () => void,
+) {
+  const requestsQuery = query(
+    collection(database, 'accessRequests'),
+    orderBy('requestedAt', 'desc'),
+  )
+
+  return onSnapshot(
+    requestsQuery,
+    (snapshot) => {
+      onRequests(
+        snapshot.docs.map((request) => {
+          const data = request.data()
+
+          return {
+            uid: request.id,
+            email: typeof data.email === 'string' ? data.email : 'Sin correo',
+            status:
+              data.status === 'approved' || data.status === 'rejected'
+                ? data.status
+                : 'pending',
+          } satisfies AccessRequest
+        }),
+      )
+    },
+    () => onError(),
+  )
 }
 
 export async function approveAccessRequest(request: AccessRequest, reviewerId: string) {

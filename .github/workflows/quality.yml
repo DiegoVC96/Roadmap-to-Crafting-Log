@@ -1,0 +1,41 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint and production build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run quality checks
+        run: npm run quality
+
+      - name: Prepare Firebase Hosting artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firebase-hosting-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 7

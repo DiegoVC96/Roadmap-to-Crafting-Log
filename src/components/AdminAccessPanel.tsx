@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   approveAccessRequest,
   loadAccessRequests,
   rejectAccessRequest,
+  subscribeToAccessRequests,
   type AccessRequest,
 } from '../data/accessControl'
 
@@ -15,6 +16,11 @@ export function AdminAccessPanel({ adminUserId }: AdminAccessPanelProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >(() => ('Notification' in window ? Notification.permission : 'unsupported'))
+  const hasReceivedInitialSnapshot = useRef(false)
+  const previousPendingCount = useRef(0)
 
   async function refreshRequests() {
     setIsLoading(true)
@@ -30,12 +36,47 @@ export function AdminAccessPanel({ adminUserId }: AdminAccessPanelProps) {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void refreshRequests()
-    }, 0)
+    const unsubscribe = subscribeToAccessRequests(
+      (nextRequests) => {
+        const nextPendingCount = nextRequests.filter(
+          (request) => request.status === 'pending',
+        ).length
 
-    return () => window.clearTimeout(timer)
+        if (
+          hasReceivedInitialSnapshot.current &&
+          nextPendingCount > previousPendingCount.current &&
+          'Notification' in window &&
+          Notification.permission === 'granted'
+        ) {
+          new Notification('Roadmap to Crafting Log', {
+            body: `Hay ${nextPendingCount} solicitud${nextPendingCount === 1 ? '' : 'es'} pendiente${nextPendingCount === 1 ? '' : 's'} de aprobación.`,
+          })
+        }
+
+        hasReceivedInitialSnapshot.current = true
+        previousPendingCount.current = nextPendingCount
+        setRequests(nextRequests)
+        setErrorMessage(null)
+        setIsLoading(false)
+      },
+      () => {
+        setErrorMessage('No pudimos cargar las solicitudes. Inténtalo nuevamente.')
+        setIsLoading(false)
+      },
+    )
+
+    return unsubscribe
   }, [])
+
+  async function enableBrowserNotifications() {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported')
+      return
+    }
+
+    const permission = await Notification.requestPermission()
+    setNotificationPermission(permission)
+  }
 
   async function reviewRequest(request: AccessRequest, decision: 'approve' | 'reject') {
     setMessage(null)
@@ -73,6 +114,29 @@ export function AdminAccessPanel({ adminUserId }: AdminAccessPanelProps) {
       <p className="admin-access-description">
         Aprueba solamente a las personas que quieras dejar entrar. Las cuentas pendientes y rechazadas no pueden usar el crafting log.
       </p>
+
+      {!isLoading && pendingRequests.length > 0 && (
+        <div className="admin-pending-alert" role="status">
+          <strong>{pendingRequests.length} solicitud{pendingRequests.length === 1 ? '' : 'es'} pendiente{pendingRequests.length === 1 ? '' : 's'}</strong>
+          <span>El agente de administración actualiza esta lista en tiempo real.</span>
+        </div>
+      )}
+
+      {notificationPermission === 'default' && (
+        <button
+          className="admin-notification-button"
+          type="button"
+          onClick={() => void enableBrowserNotifications()}
+        >
+          Activar avisos del navegador
+        </button>
+      )}
+      {notificationPermission === 'denied' && (
+        <p className="admin-notification-note">Los avisos del navegador están bloqueados. Puedes activarlos desde la configuración del sitio.</p>
+      )}
+      {notificationPermission === 'unsupported' && (
+        <p className="admin-notification-note">Este navegador no permite avisos del sistema, pero la alerta seguirá apareciendo dentro de la app.</p>
+      )}
 
       {message && <p className="auth-message">{message}</p>}
       {errorMessage && <p className="error-message">{errorMessage}</p>}

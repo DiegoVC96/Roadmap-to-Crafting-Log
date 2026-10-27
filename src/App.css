@@ -3875,6 +3875,41 @@ button:focus-visible {
   line-height: 1.5;
 }
 
+.admin-pending-alert {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(237, 188, 91, 0.8);
+  border-radius: 10px;
+  background: rgba(108, 69, 25, 0.42);
+}
+
+.admin-pending-alert strong {
+  color: #ffe09b;
+}
+
+.admin-pending-alert span,
+.admin-notification-note {
+  color: #eadbc0;
+  font-size: 0.86rem;
+}
+
+.admin-notification-button {
+  min-height: 38px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid #8baecb;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #345d7b, #263c58);
+  color: #e5f4ff;
+  font-weight: 800;
+}
+
+.admin-notification-note {
+  margin: 0 0 12px;
+}
+
 .admin-refresh-button,
 .approve-access-button,
 .reject-access-button {
