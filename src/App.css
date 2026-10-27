@@ -997,6 +997,116 @@ h1 {
   font-size: 0.82rem;
 }
 
+.crafting-graph-scroll {
+  overflow: auto;
+  min-height: 490px;
+  border: 1px solid rgba(78, 118, 145, 0.68);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 25% 30%, rgba(73, 111, 135, 0.16), transparent 28%),
+    linear-gradient(rgba(105, 151, 177, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(105, 151, 177, 0.08) 1px, transparent 1px),
+    rgba(8, 19, 29, 0.8);
+  background-size: auto, 25px 25px, 25px 25px, auto;
+}
+
+.crafting-graph {
+  position: relative;
+  touch-action: none;
+}
+
+.crafting-graph-connections {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.crafting-graph-connections path {
+  fill: none;
+  stroke: #8dc46e;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(123, 198, 99, 0.45));
+}
+
+.crafting-graph-connections marker path {
+  fill: #8dc46e;
+  stroke: none;
+}
+
+.crafting-graph-node {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 178px;
+  min-height: 86px;
+  padding: 9px;
+  border: 2px solid rgba(93, 143, 173, 0.84);
+  border-radius: 10px;
+  color: #eef7ff;
+  background:
+    linear-gradient(145deg, rgba(48, 79, 97, 0.98), rgba(20, 35, 46, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 6px 12px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  font: inherit;
+  text-align: left;
+  touch-action: none;
+  user-select: none;
+}
+
+.crafting-graph-node:hover,
+.crafting-graph-node.dragging {
+  z-index: 2;
+  border-color: #c6ed8d;
+  background: linear-gradient(145deg, rgba(74, 103, 65, 0.99), rgba(28, 51, 43, 0.99));
+  box-shadow:
+    0 0 0 3px rgba(180, 223, 121, 0.18),
+    0 10px 18px rgba(0, 0, 0, 0.38);
+}
+
+.crafting-graph-node:active {
+  cursor: grabbing;
+}
+
+.crafting-graph-node.result {
+  border-color: #efc261;
+  background: linear-gradient(145deg, rgba(113, 79, 31, 0.98), rgba(58, 58, 34, 0.98));
+}
+
+.crafting-graph-node span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crafting-graph-node strong {
+  overflow: hidden;
+  color: #fff5d6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.79rem;
+}
+
+.crafting-graph-node small {
+  overflow: hidden;
+  color: #bed0db;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.67rem;
+}
+
+.crafting-graph-node b {
+  color: #f9d980;
+  font-size: 0.76rem;
+}
+
 .ingredient-panel {
   margin-top: 18px;
   padding: 20px;

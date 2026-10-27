@@ -65,28 +65,24 @@ function readFreeTrialStorage(value: unknown) {
   ) as Record<string, 'inventory' | 'saddlebag'>
 }
 
-function readCraftingTreeLanes(value: unknown) {
+function readCraftingTreePositions(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {}
   }
 
-  const validLanes = new Set([
-    'gather',
-    'Carpenter',
-    'Blacksmith',
-    'Armorer',
-    'Goldsmith',
-    'Leatherworker',
-    'Weaver',
-    'Alchemist',
-    'Culinarian',
-  ])
-
   return Object.fromEntries(
     Object.entries(value).filter(
-      ([materialKey, lane]) => materialKey.length > 0 && typeof lane === 'string' && validLanes.has(lane),
+      ([nodeKey, position]) =>
+        nodeKey.length > 0 &&
+        !!position &&
+        typeof position === 'object' &&
+        !Array.isArray(position) &&
+        typeof (position as { x?: unknown }).x === 'number' &&
+        Number.isFinite((position as { x: number }).x) &&
+        typeof (position as { y?: unknown }).y === 'number' &&
+        Number.isFinite((position as { y: number }).y),
     ),
-  ) as Record<string, string>
+  ) as Record<string, { x: number; y: number }>
 }
 
 export type UserProgress = {
@@ -95,7 +91,7 @@ export type UserProgress = {
   farmingSessionItemIds: number[]
   marketScope: MarketScope | null
   freeTrialStorageByItemId: Record<string, 'inventory' | 'saddlebag'>
-  craftingTreeLaneByKey: Record<string, string>
+  craftingTreePositions: Record<string, { x: number; y: number }>
 }
 
 export async function loadUserProgress(userId: string) {
@@ -108,7 +104,7 @@ export async function loadUserProgress(userId: string) {
       farmingSessionItemIds: [],
       marketScope: null,
       freeTrialStorageByItemId: {},
-      craftingTreeLaneByKey: {},
+      craftingTreePositions: {},
     }
   }
 
@@ -120,7 +116,7 @@ export async function loadUserProgress(userId: string) {
     farmingSessionItemIds: readItemIds(data.farmingSessionItemIds),
     marketScope: readMarketScope(data.marketScope),
     freeTrialStorageByItemId: readFreeTrialStorage(data.freeTrialStorageByItemId),
-    craftingTreeLaneByKey: readCraftingTreeLanes(data.craftingTreeLaneByKey),
+    craftingTreePositions: readCraftingTreePositions(data.craftingTreePositions),
   }
 }
 
@@ -133,7 +129,7 @@ export async function saveUserProgress(userId: string, progress: UserProgress) {
       farmingSessionItemIds: progress.farmingSessionItemIds,
       marketScope: progress.marketScope,
       freeTrialStorageByItemId: progress.freeTrialStorageByItemId,
-      craftingTreeLaneByKey: progress.craftingTreeLaneByKey,
+      craftingTreePositions: progress.craftingTreePositions,
       updatedAt: serverTimestamp(),
     },
     { merge: true },

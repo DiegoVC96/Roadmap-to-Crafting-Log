@@ -1,4 +1,4 @@
-import { type ChangeEvent, type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth'
 import './App.css'
 import appLogo from './assets/roadmap-logo.png'
@@ -68,16 +68,23 @@ type SmartPlanItem = {
 
 type FreeTrialStorageLocation = 'inventory' | 'saddlebag'
 
-type WorkbenchLaneId = CrafterId | 'gather'
-
-type WorkbenchMaterial = {
-  key: string
+type CraftingGraphNode = {
+  id: string
   itemId: number
   name: string
   iconPath: string | null
   quantity: number
-  originalLane: WorkbenchLaneId
   description: string
+}
+
+type CraftingGraphEdge = {
+  from: string
+  to: string
+}
+
+type CraftingGraphPosition = {
+  x: number
+  y: number
 }
 
 const recipeLevelRanges = Array.from({ length: 20 }, (_, index) => {
@@ -226,31 +233,32 @@ const crafters: Crafter[] = [
   },
 ]
 
-function collectWorkbenchMaterials(
+function buildCraftingGraph(
   node: CraftingTreeNode,
-  materials = new Map<string, WorkbenchMaterial>(),
+  nodes = new Map<string, CraftingGraphNode>(),
+  edges = new Map<string, CraftingGraphEdge>(),
 ) {
-  for (const child of node.children) {
-    const originalLane = child.crafter ?? 'gather'
-    const key = `${child.itemId}-${originalLane}`
-    const current = materials.get(key)
+  const nodeId = `item-${node.itemId}`
+  const current = nodes.get(nodeId)
+  nodes.set(nodeId, {
+    id: nodeId,
+    itemId: node.itemId,
+    name: node.name,
+    iconPath: node.iconPath,
+    quantity: Math.max(current?.quantity ?? 0, node.quantity),
+    description:
+      node.crafts === null
+        ? 'Reunir, comprar u obtener'
+        : `${node.crafter} · fabricar ×${node.crafts.toLocaleString()}`,
+  })
 
-    materials.set(key, {
-      key,
-      itemId: child.itemId,
-      name: child.name,
-      iconPath: child.iconPath,
-      quantity: (current?.quantity ?? 0) + child.quantity,
-      originalLane,
-      description:
-        child.crafts === null
-          ? 'Reunir, comprar u obtener'
-          : `Fabricar ×${child.crafts.toLocaleString()}`,
-    })
-    collectWorkbenchMaterials(child, materials)
+  for (const child of node.children) {
+    const childId = `item-${child.itemId}`
+    edges.set(`${childId}-${nodeId}`, { from: childId, to: nodeId })
+    buildCraftingGraph(child, nodes, edges)
   }
 
-  return materials
+  return { nodes: [...nodes.values()], edges: [...edges.values()] }
 }
 
 function readMarketScope(value: unknown): MarketScope | null {
@@ -340,11 +348,11 @@ function App() {
   const [selectedCraftingTreeRecipe, setSelectedCraftingTreeRecipe] =
     useState<FfxivRecipe | null>(null)
   const [craftingTreeSearchText, setCraftingTreeSearchText] = useState('')
-  const [treeMaterialLaneByKey, setTreeMaterialLaneByKey] = useState<
-    Record<string, WorkbenchLaneId>
+  const [craftingTreePositions, setCraftingTreePositions] = useState<
+    Record<string, CraftingGraphPosition>
   >({})
-  const [selectedTreeMaterialKey, setSelectedTreeMaterialKey] = useState<string | null>(null)
-  const [draggedTreeMaterialKey, setDraggedTreeMaterialKey] = useState<string | null>(null)
+  const [draggedCraftingNodeId, setDraggedCraftingNodeId] = useState<string | null>(null)
+  const craftingGraphRef = useRef<HTMLDivElement>(null)
   const [highlightedMaterialId, setHighlightedMaterialId] = useState<number | null>(null)
   const [selectedMaterialSource, setSelectedMaterialSource] =
     useState<BaseMaterialTotal | null>(null)
@@ -486,38 +494,64 @@ const selectedCraftingTree = useMemo(
   [recipes, selectedCraftingTreeCrafts, selectedCraftingTreeRecipe],
 )
 
-const workbenchMaterials = useMemo(
+const craftingGraph = useMemo(
   () =>
     selectedCraftingTree
-      ? [...collectWorkbenchMaterials(selectedCraftingTree).values()].sort(
-          (first, second) =>
-            first.originalLane.localeCompare(second.originalLane) ||
-            second.quantity - first.quantity ||
-            first.name.localeCompare(second.name),
-        )
-      : [],
+      ? buildCraftingGraph(selectedCraftingTree)
+      : { nodes: [], edges: [] },
   [selectedCraftingTree],
 )
 
-const workbenchMaterialsByLane = useMemo(() => {
-  const materialsByLane = new Map<WorkbenchLaneId, WorkbenchMaterial[]>()
+const craftingGraphLayout = useMemo(() => {
+  const depths = new Map<string, number>()
 
-  for (const material of workbenchMaterials) {
-    const lane = treeMaterialLaneByKey[material.key] ?? material.originalLane
-    const items = materialsByLane.get(lane) ?? []
-    items.push(material)
-    materialsByLane.set(lane, items)
+  function getDepth(nodeId: string): number {
+    const cached = depths.get(nodeId)
+    if (cached !== undefined) {
+      return cached
+    }
+
+    const inputs = craftingGraph.edges
+      .filter((edge) => edge.to === nodeId)
+      .map((edge) => edge.from)
+    const depth = inputs.length === 0 ? 0 : Math.max(...inputs.map(getDepth)) + 1
+    depths.set(nodeId, depth)
+    return depth
   }
 
-  for (const items of materialsByLane.values()) {
-    items.sort(
-      (first, second) =>
-        second.quantity - first.quantity || first.name.localeCompare(second.name),
-    )
+  const nodesByDepth = new Map<number, CraftingGraphNode[]>()
+  for (const node of craftingGraph.nodes) {
+    const depth = getDepth(node.id)
+    const nodes = nodesByDepth.get(depth) ?? []
+    nodes.push(node)
+    nodesByDepth.set(depth, nodes)
   }
 
-  return materialsByLane
-}, [treeMaterialLaneByKey, workbenchMaterials])
+  const maxDepth = Math.max(...nodesByDepth.keys(), 0)
+  const defaultPositions = new Map<string, CraftingGraphPosition>()
+  let highestColumn = 0
+
+  for (const [depth, nodes] of nodesByDepth) {
+    nodes.sort((first, second) => first.name.localeCompare(second.name))
+    highestColumn = Math.max(highestColumn, nodes.length)
+    nodes.forEach((node, index) => {
+      const savedKey = `${selectedCraftingTreeRecipe?.id}:${node.id}`
+      defaultPositions.set(
+        node.id,
+        craftingTreePositions[savedKey] ?? {
+          x: 42 + depth * 245,
+          y: 48 + index * 125,
+        },
+      )
+    })
+  }
+
+  return {
+    positions: defaultPositions,
+    width: Math.max(820, 42 + (maxDepth + 1) * 245),
+    height: Math.max(460, 48 + highestColumn * 125),
+  }
+}, [craftingGraph, craftingTreePositions, selectedCraftingTreeRecipe?.id])
 
 const vendorShoppingCost = useMemo(
   () =>
@@ -841,7 +875,7 @@ function downloadProgressBackup() {
     farmingSessionItemIds,
     marketScope,
     freeTrialStorageByItemId,
-    craftingTreeLaneByKey: treeMaterialLaneByKey,
+    craftingTreePositions,
   }
   const file = new Blob([JSON.stringify(backup, null, 2)], {
     type: 'application/json',
@@ -913,17 +947,21 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
             ),
           ) as Record<string, FreeTrialStorageLocation>
         : {}
-    const restoredCraftingTreeLanes =
-      data.craftingTreeLaneByKey &&
-      typeof data.craftingTreeLaneByKey === 'object' &&
-      !Array.isArray(data.craftingTreeLaneByKey)
+    const restoredCraftingTreePositions =
+      data.craftingTreePositions &&
+      typeof data.craftingTreePositions === 'object' &&
+      !Array.isArray(data.craftingTreePositions)
         ? Object.fromEntries(
-            Object.entries(data.craftingTreeLaneByKey).filter(
-              ([materialKey, lane]) =>
-                materialKey.length > 0 &&
-                (lane === 'gather' || crafters.some((crafter) => crafter.id === lane)),
+            Object.entries(data.craftingTreePositions).filter(
+              ([nodeKey, position]) =>
+                nodeKey.length > 0 &&
+                !!position &&
+                typeof position === 'object' &&
+                !Array.isArray(position) &&
+                typeof (position as { x?: unknown }).x === 'number' &&
+                typeof (position as { y?: unknown }).y === 'number',
             ),
-          ) as Record<string, WorkbenchLaneId>
+          ) as Record<string, CraftingGraphPosition>
         : {}
     const shouldRestore = window.confirm(
       '¿Quieres reemplazar tu progreso e inventario actuales con este respaldo?',
@@ -937,7 +975,7 @@ async function restoreProgressBackup(event: ChangeEvent<HTMLInputElement>) {
     setInventoryByItemId(restoredInventory)
     setFarmingSessionItemIds(restoredFarmingSessionItemIds)
     setFreeTrialStorageByItemId(restoredFreeTrialStorage)
-    setTreeMaterialLaneByKey(restoredCraftingTreeLanes)
+    setCraftingTreePositions(restoredCraftingTreePositions)
     const restoredMarketScope = readMarketScope(data.marketScope)
     setMarketScope(restoredMarketScope)
     if (restoredMarketScope) {
@@ -985,27 +1023,32 @@ function openCraftingTree(recipe: FfxivRecipe | null = null) {
   setIsMaterialsRoadmapOpen(false)
   setSelectedCraftingTreeRecipe(recipe)
   setCraftingTreeSearchText('')
-  setSelectedTreeMaterialKey(null)
-  setDraggedTreeMaterialKey(null)
+  setDraggedCraftingNodeId(null)
   setIsCraftingTreeOpen(true)
 }
 
-function moveWorkbenchMaterial(materialKey: string, lane: WorkbenchLaneId) {
-  setTreeMaterialLaneByKey((current) => ({
-    ...current,
-    [materialKey]: lane,
-  }))
-  setSelectedTreeMaterialKey(null)
-  setDraggedTreeMaterialKey(null)
+function handleCraftingNodePointerDown(
+  event: PointerEvent<HTMLButtonElement>,
+  nodeId: string,
+) {
+  event.currentTarget.setPointerCapture(event.pointerId)
+  setDraggedCraftingNodeId(nodeId)
 }
 
-function handleWorkbenchDrop(event: DragEvent<HTMLElement>, lane: WorkbenchLaneId) {
-  event.preventDefault()
-  const materialKey = event.dataTransfer.getData('text/plain') || draggedTreeMaterialKey
-
-  if (materialKey) {
-    moveWorkbenchMaterial(materialKey, lane)
+function handleCraftingGraphPointerMove(event: PointerEvent<HTMLDivElement>) {
+  if (!draggedCraftingNodeId || !craftingGraphRef.current || !selectedCraftingTreeRecipe) {
+    return
   }
+
+  const bounds = craftingGraphRef.current.getBoundingClientRect()
+  const x = Math.max(10, event.clientX - bounds.left - 88)
+  const y = Math.max(10, event.clientY - bounds.top - 42)
+  const savedKey = `${selectedCraftingTreeRecipe.id}:${draggedCraftingNodeId}`
+
+  setCraftingTreePositions((current) => ({
+    ...current,
+    [savedKey]: { x, y },
+  }))
 }
 
 function openVendorShoppingList() {
@@ -1345,7 +1388,7 @@ useEffect(() => {
         setFarmingSessionItemIds(savedProgress.farmingSessionItemIds)
         setMarketScope(savedProgress.marketScope)
         setFreeTrialStorageByItemId(savedProgress.freeTrialStorageByItemId)
-        setTreeMaterialLaneByKey(savedProgress.craftingTreeLaneByKey as Record<string, WorkbenchLaneId>)
+        setCraftingTreePositions(savedProgress.craftingTreePositions)
         setMarketScopeType(savedProgress.marketScope?.type ?? 'world')
       }
     } catch {
@@ -1386,7 +1429,7 @@ useEffect(() => {
       farmingSessionItemIds,
       marketScope,
       freeTrialStorageByItemId,
-      craftingTreeLaneByKey: treeMaterialLaneByKey,
+      craftingTreePositions,
     }).catch(() => {
       setProgressSyncError(
         'No pudimos guardar el último cambio. Revisa tu conexión e inténtalo nuevamente.',
@@ -1401,7 +1444,7 @@ useEffect(() => {
   farmingSessionItemIds,
   marketScope,
   freeTrialStorageByItemId,
-  treeMaterialLaneByKey,
+  craftingTreePositions,
   currentUser?.uid,
   loadedProgressUserId,
   accessState.status,
@@ -2148,7 +2191,7 @@ useEffect(() => {
                 type="button"
                 onClick={() => {
                   setSelectedCraftingTreeRecipe(null)
-                  setSelectedTreeMaterialKey(null)
+                  setDraggedCraftingNodeId(null)
                 }}
               >
                 Cambiar receta
@@ -2173,7 +2216,7 @@ useEffect(() => {
                     type="button"
                     onClick={() => {
                       setSelectedCraftingTreeRecipe(recipe)
-                      setSelectedTreeMaterialKey(null)
+                      setDraggedCraftingNodeId(null)
                     }}
                   >
                     {recipe.iconPath ? (
@@ -2199,113 +2242,98 @@ useEffect(() => {
                 </strong>
               </div>
               <p className="crafting-workbench-help">
-                Arrastra un material a otra columna para organizar tu plan. En móvil, selecciónalo y pulsa “Mover aquí” en la columna elegida.
+                Organiza tu línea de producción: arrastra cada estación para ordenar el flujo de materiales. Las flechas muestran qué componente alimenta a la siguiente receta.
               </p>
-              <div className="crafting-workbench-scroll">
-                <div className="crafting-workbench">
-                  <div className="crafting-workbench-root">
-                    {selectedCraftingTree.iconPath && (
-                      <img
-                        className="game-icon"
-                        src={getIconUrl(selectedCraftingTree.iconPath)}
-                        alt=""
-                      />
-                    )}
-                    <div>
-                      <span>RESULTADO FINAL</span>
-                      <strong>{selectedCraftingTree.name}</strong>
-                    </div>
-                    <b>×{selectedCraftingTree.quantity.toLocaleString()}</b>
-                  </div>
-                  <div className="crafting-workbench-connector" aria-hidden="true" />
-                  <div className="crafting-workbench-lanes">
-                    {([
-                      { id: 'gather' as const, label: 'Reunir / comprar', icon: '✦' },
-                      ...crafters.map((crafter) => ({
-                        id: crafter.id,
-                        label: crafter.id,
-                        icon: crafter.icon,
-                      })),
-                    ] as Array<{ id: WorkbenchLaneId; label: string; icon: string }>).map((lane) => {
-                      const laneMaterials = workbenchMaterialsByLane.get(lane.id) ?? []
+              <div className="crafting-graph-scroll">
+                <div
+                  className="crafting-graph"
+                  ref={craftingGraphRef}
+                  style={{
+                    width: `${craftingGraphLayout.width}px`,
+                    height: `${craftingGraphLayout.height}px`,
+                  }}
+                  onPointerMove={handleCraftingGraphPointerMove}
+                  onPointerUp={() => setDraggedCraftingNodeId(null)}
+                  onPointerCancel={() => setDraggedCraftingNodeId(null)}
+                >
+                  <svg className="crafting-graph-connections" aria-hidden="true">
+                    <defs>
+                      <marker
+                        id="crafting-arrow"
+                        markerWidth="8"
+                        markerHeight="8"
+                        refX="7"
+                        refY="4"
+                        orient="auto"
+                      >
+                        <path d="M0,0 L8,4 L0,8 Z" />
+                      </marker>
+                    </defs>
+                    {craftingGraph.edges.map((edge) => {
+                      const from = craftingGraphLayout.positions.get(edge.from)
+                      const to = craftingGraphLayout.positions.get(edge.to)
+
+                      if (!from || !to) {
+                        return null
+                      }
+
+                      const startX = from.x + 178
+                      const startY = from.y + 43
+                      const endX = to.x
+                      const endY = to.y + 43
+                      const curve = Math.max(45, Math.abs(endX - startX) * 0.45)
 
                       return (
-                        <section
-                          className="crafting-workbench-lane"
-                          key={lane.id}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={(event) => handleWorkbenchDrop(event, lane.id)}
-                        >
-                          <header>
-                            <div>
-                              {lane.id === 'gather' ? (
-                                <span className="workbench-lane-symbol">{lane.icon}</span>
-                              ) : (
-                                <img className="crafter-icon" src={lane.icon} alt="" />
-                              )}
-                              <h4>{lane.label}</h4>
-                            </div>
-                            <small>{laneMaterials.length}</small>
-                          </header>
-                          {selectedTreeMaterialKey && (
-                            <button
-                              className="workbench-move-button"
-                              type="button"
-                              onClick={() => moveWorkbenchMaterial(selectedTreeMaterialKey, lane.id)}
-                            >
-                              Mover aquí
-                            </button>
-                          )}
-                          <div className="crafting-workbench-materials">
-                            {laneMaterials.map((material) => (
-                              <button
-                                className={`workbench-material ${
-                                  selectedTreeMaterialKey === material.key ? 'selected' : ''
-                                }`}
-                                draggable
-                                key={material.key}
-                                type="button"
-                                onClick={() =>
-                                  setSelectedTreeMaterialKey((current) =>
-                                    current === material.key ? null : material.key,
-                                  )
-                                }
-                                onDragStart={(event) => {
-                                  event.dataTransfer.effectAllowed = 'move'
-                                  event.dataTransfer.setData('text/plain', material.key)
-                                  setDraggedTreeMaterialKey(material.key)
-                                }}
-                                onDragEnd={() => setDraggedTreeMaterialKey(null)}
-                              >
-                                {material.iconPath && (
-                                  <img className="game-icon" src={getIconUrl(material.iconPath)} alt="" />
-                                )}
-                                <span>
-                                  <strong>{material.name}</strong>
-                                  <small>{material.description}</small>
-                                </span>
-                                <b>×{material.quantity.toLocaleString()}</b>
-                              </button>
-                            ))}
-                            {laneMaterials.length === 0 && (
-                              <p className="workbench-empty">Suelta materiales aquí</p>
-                            )}
-                          </div>
-                        </section>
+                        <path
+                          key={`${edge.from}-${edge.to}`}
+                          d={`M ${startX} ${startY} C ${startX + curve} ${startY}, ${endX - curve} ${endY}, ${endX} ${endY}`}
+                          markerEnd="url(#crafting-arrow)"
+                        />
                       )
                     })}
-                  </div>
+                  </svg>
+                  {craftingGraph.nodes.map((node) => {
+                    const position = craftingGraphLayout.positions.get(node.id)
+                    const isResult = node.itemId === selectedCraftingTree.itemId
+
+                    return position ? (
+                      <button
+                        className={`crafting-graph-node ${isResult ? 'result' : ''} ${
+                          draggedCraftingNodeId === node.id ? 'dragging' : ''
+                        }`}
+                        key={node.id}
+                        style={{ left: `${position.x}px`, top: `${position.y}px` }}
+                        type="button"
+                        onPointerDown={(event) => handleCraftingNodePointerDown(event, node.id)}
+                      >
+                        {node.iconPath && (
+                          <img className="game-icon" src={getIconUrl(node.iconPath)} alt="" />
+                        )}
+                        <span>
+                          <strong>{node.name}</strong>
+                          <small>{node.description}</small>
+                        </span>
+                        <b>×{node.quantity.toLocaleString()}</b>
+                      </button>
+                    ) : null
+                  })}
                 </div>
               </div>
               <button
                 className="tree-reset-layout-button"
                 type="button"
                 onClick={() => {
-                  setTreeMaterialLaneByKey({})
-                  setSelectedTreeMaterialKey(null)
+                  const recipePrefix = `${selectedCraftingTreeRecipe.id}:`
+                  setCraftingTreePositions((current) =>
+                    Object.fromEntries(
+                      Object.entries(current).filter(
+                        ([nodeKey]) => !nodeKey.startsWith(recipePrefix),
+                      ),
+                    ),
+                  )
                 }}
               >
-                Restablecer distribución
+                Restablecer mapa
               </button>
             </section>
           )}
