@@ -241,12 +241,22 @@ const crafters: Crafter[] = [
 
 function AppHeader({ user }: { user: User }) {
   return (
-    <div className="app-header">
-      <a className="app-header-brand" href="#crafting-log">
-        Roadmap to Crafting Log
-      </a>
-      <AccountActions user={user} />
-    </div>
+    <>
+      <div className="app-header">
+        <a className="app-header-brand" href="#crafting-log">
+          <img src={appLogo} alt="" />
+          <span>Roadmap to Crafting Log</span>
+        </a>
+        <AccountActions user={user} />
+      </div>
+      <footer className="app-footer">
+        <span>© 2026 Roadmap to Crafting Log</span>
+        <span>Planifica, reúne y completa tu crafting log.</span>
+        <a href="https://github.com/DiegoVC96/Roadmap-to-Crafting-Log" target="_blank" rel="noreferrer">
+          GitHub
+        </a>
+      </footer>
+    </>
   )
 }
 
@@ -1652,7 +1662,7 @@ useEffect(() => {
     )
   }
 
-  if (isDataAgentOpen) {
+  if (isDataAgentOpen && accessState.isAdmin) {
     const hasAuditRun = dataAuditProgress.total > 0
     const visibleMissingSources = missingSourceMaterials.slice(0, 20)
     const visibleRecipeIssues = dataRecipeIssues.slice(0, 20)
@@ -3210,14 +3220,16 @@ if (isMaterialsRoadmapOpen) {
             Asistente de crafting
           </button>
 
-          <button
-            className="data-agent-button"
-            type="button"
-            onClick={() => setIsDataAgentOpen(true)}
-            disabled={!hasLoadedRecipes}
-          >
-            Agente de datos
-          </button>
+          {accessState.isAdmin && (
+            <button
+              className="data-agent-button"
+              type="button"
+              onClick={() => setIsDataAgentOpen(true)}
+              disabled={!hasLoadedRecipes}
+            >
+              Agente de datos
+            </button>
+          )}
 
           <button
             className="free-trial-button"

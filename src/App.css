@@ -25,7 +25,7 @@ button {
 .app {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 72px 0;
+  padding: 72px 0 128px;
 }
 
 .hero {
@@ -2228,6 +2228,9 @@ button:focus-visible {
 }
 
 .app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   color: #f4ce79;
   font-family: Georgia, serif;
   font-size: 1.05rem;
@@ -2235,9 +2238,46 @@ button:focus-visible {
   text-decoration: none;
 }
 
+.app-header-brand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 7px rgba(244, 206, 121, 0.34));
+}
+
 .app-header .account-actions {
   justify-content: flex-end;
   margin: 0;
+}
+
+.app-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 35;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  min-height: 46px;
+  padding: 10px 20px;
+  border-top: 1px solid rgba(104, 141, 165, 0.5);
+  background: rgba(8, 17, 27, 0.9);
+  backdrop-filter: blur(13px);
+  color: #b7c8d7;
+  font-size: 0.8rem;
+}
+
+.app-footer a {
+  color: #f2cb77;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: #fff0bd;
+  text-decoration: underline;
 }
 
 .main-actions {
@@ -3271,7 +3311,7 @@ button:focus-visible {
 
   .app {
     width: min(100% - 24px, 1120px);
-    padding: 40px 0;
+    padding: 40px 0 140px;
   }
 
   .hero {
@@ -3287,6 +3327,13 @@ button:focus-visible {
 
   .app-header .account-actions {
     justify-content: center;
+  }
+
+  .app-footer {
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    padding: 9px 14px;
+    text-align: center;
   }
 
   .main-actions {
