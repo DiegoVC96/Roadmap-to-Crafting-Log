@@ -538,6 +538,35 @@ const visibleRecipesByLevelRange = recipeLevelRanges
   }))
   .filter((range) => range.recipes.length > 0)
 
+const specialRecipeSections = [
+  ['society', 'Society Quests'],
+  ['housing', 'Housing'],
+  ['other', 'Others'],
+] as const
+
+const visibleSpecialRecipesBySection = specialRecipeSections
+  .map(([section, label]) => ({
+    section,
+    label,
+    recipes: visibleSelectedRecipes.filter(
+      (recipe) => recipe.specialSection === section,
+    ),
+  }))
+  .filter((section) => section.recipes.length > 0)
+
+const visibleRecipeGroups =
+  recipeCategoryFilter === 'special'
+    ? visibleSpecialRecipesBySection.map((section) => ({
+        key: section.section,
+        label: section.label,
+        recipes: section.recipes,
+      }))
+    : visibleRecipesByLevelRange.map((range) => ({
+        key: String(range.start),
+        label: `Nivel ${range.label}`,
+        recipes: range.recipes,
+      }))
+
 const materialTotals = useMemo(() => {
   return calculateBaseMaterialTotals(
     recipes,
@@ -3399,21 +3428,25 @@ if (isMaterialsRoadmapOpen) {
         placeholder={`Buscar en ${selectedCrafter.id}…`}
       />
 
-      <select
-        className="level-filter"
-        value={levelFilter}
-        onChange={(event) => setLevelFilter(event.target.value)}
-        aria-label="Filtrar por nivel"
+      {recipeCategoryFilter !== 'special' && (
+        <select
+          className="level-filter"
+          value={levelFilter}
+          onChange={(event) => setLevelFilter(event.target.value)}
+          aria-label="Filtrar por nivel"
         >
-        <option value="all">
-          {recipeCategoryFilter === 'level' ? 'Todos los niveles' : 'Todos los niveles de receta'}
-        </option>
-        {recipeLevelRanges.map((range) => (
-          <option key={range.start} value={range.start}>
-            Nivel {range.label}
+          <option value="all">
+            {recipeCategoryFilter === 'level'
+              ? 'Todos los niveles'
+              : 'Todos los niveles de receta'}
           </option>
-        ))}
-      </select>
+          {recipeLevelRanges.map((range) => (
+            <option key={range.start} value={range.start}>
+              Nivel {range.label}
+            </option>
+          ))}
+        </select>
+      )}
 
       <div className="filter-buttons">
         <button
@@ -3442,13 +3475,13 @@ if (isMaterialsRoadmapOpen) {
     </p>
 
     <div className="recipe-list">
-  {visibleRecipesByLevelRange.map((range) => (
-    <section className="recipe-level-group" key={range.start}>
+  {visibleRecipeGroups.map((group) => (
+    <section className="recipe-level-group" key={group.key}>
       <div className="recipe-level-heading">
-        <h3>Nivel {range.label}</h3>
-        <span>{range.recipes.length} recetas</span>
+        <h3>{group.label}</h3>
+        <span>{group.recipes.length} recetas</span>
       </div>
-  {range.recipes.map((recipe) => {
+  {group.recipes.map((recipe) => {
     const isCompleted = completedRecipeIds.includes(recipe.id)
     const isSelectedRecipe = selectedRecipe?.id === recipe.id
 

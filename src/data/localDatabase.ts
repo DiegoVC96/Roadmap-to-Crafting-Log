@@ -5,7 +5,7 @@ const databaseVersion = 1
 const recipeStoreName = 'recipe-catalog'
 // Cambiar la clave obliga a renovar catálogos guardados cuando incorporamos
 // nuevas columnas necesarias para clasificar las recetas.
-const recipeCatalogKey = 'all-recipes-v4'
+const recipeCatalogKey = 'all-recipes-v7'
 
 type StoredRecipeCatalog = {
   id: string

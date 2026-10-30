@@ -20,7 +20,10 @@ export type FfxivRecipe = {
   crafter: CrafterId
   level: number | null
   resultAmount: number
+  /** Orden con el que la receta aparece dentro del Recipe Notebook del juego. */
+  notebookOrder: number
   category: 'level' | 'special' | 'master'
+  specialSection: 'society' | 'housing' | 'other' | null
   masterRecipeBook: string | null
   ingredients: RecipeIngredient[]
 }
@@ -54,6 +57,20 @@ const craftTypeToCrafter: Record<string, CrafterId> = {
   Cooking: 'Culinarian',
 }
 
+const housingCategoryKeywords = [
+  'furnishing',
+  'fixture',
+  'housing',
+  'interior',
+  'outdoor',
+  'garden',
+  'partition',
+  'wall-mounted',
+  'wall',
+  'table',
+  'rug',
+]
+
 function readName(value: unknown): string | null {
   if (typeof value === 'string' && value.length > 0) {
     return value
@@ -71,6 +88,19 @@ function readName(value: unknown): string | null {
   const name = relation.fields?.Name ?? relation.Name
 
   return typeof name === 'string' && name.length > 0 ? name : null
+}
+
+function readRelatedName(value: unknown, relationName: string): string | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const relation = value as {
+    [key: string]: unknown
+    fields?: Record<string, unknown>
+  }
+
+  return readName(relation.fields?.[relationName] ?? relation[relationName])
 }
 
 function readLevel(value: unknown): number | null {
@@ -97,9 +127,11 @@ function readRowId(value: unknown): number | null {
     return null
   }
 
-  const relation = value as { row_id?: unknown }
+  const relation = value as { row_id?: unknown; value?: unknown }
 
-  return typeof relation.row_id === 'number' ? relation.row_id : null
+  const rowId = relation.row_id ?? relation.value
+
+  return typeof rowId === 'number' ? rowId : null
 }
 
 function readIconPath(value: unknown): string | null {
@@ -125,6 +157,16 @@ function readIconPath(value: unknown): string | null {
 
 function readBoolean(value: unknown) {
   return value === true || value === 1
+}
+
+function isHousingRecipe(...categories: Array<string | null>) {
+  return categories.some((category) => {
+    const normalizedCategory = category?.toLocaleLowerCase() ?? ''
+
+    return housingCategoryKeywords.some((keyword) =>
+      normalizedCategory.includes(keyword),
+    )
+  })
 }
 
 function readIngredients(fields: Record<string, unknown>): RecipeIngredient[] {
@@ -171,7 +213,7 @@ export async function loadRecipePage(after?: number) {
   url.searchParams.set('limit', '500')
   url.searchParams.set(
     'fields',
-    'CraftType.Name,ItemResult.Name,ItemResult.Icon,RecipeLevelTable.ClassJobLevel,AmountResult,IsSpecializationRequired,IsExpert,SecretRecipeBook.Name,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
+    'CraftType.Name,ItemResult.Name,ItemResult.Icon,ItemResult.ItemUICategory.Name,ItemResult.ItemSearchCategory.Name,RecipeLevelTable.ClassJobLevel,AmountResult,Number,IsSpecializationRequired,IsExpert,SecretRecipeBook.Name,ItemRequired.Name,StatusRequired.Name,Ingredient[].Name,Ingredient[].Icon,AmountIngredient',
   )
 
   if (after !== undefined) {
@@ -198,20 +240,44 @@ export async function loadRecipePage(after?: number) {
 
     const resultItemId = readRowId(row.fields.ItemResult)
     const iconPath = readIconPath(row.fields.ItemResult)
+    const requiredItemId = readRowId(row.fields.ItemRequired) ?? 0
+    const requiredStatusId = readRowId(row.fields.StatusRequired) ?? 0
+    const itemUiCategory =
+      readName(row.fields['ItemResult.ItemUICategory']) ??
+      readRelatedName(row.fields.ItemResult, 'ItemUICategory')
+    const itemSearchCategory =
+      readName(row.fields['ItemResult.ItemSearchCategory']) ??
+      readRelatedName(row.fields.ItemResult, 'ItemSearchCategory')
     const masterRecipeBook =
       readName(row.fields.SecretRecipeBook) ??
       readName(row.fields['SecretRecipeBook.Name'])
     const isSpecialRecipe =
       readBoolean(row.fields.IsSpecializationRequired) ||
       readBoolean(row.fields.IsExpert)
+    const isSocietyRecipe = requiredItemId > 0 || requiredStatusId > 0
+    const isHousing = isHousingRecipe(itemUiCategory, itemSearchCategory)
 
 const crafter = craftTypeName
   ? craftTypeToCrafter[craftTypeName]
   : undefined
 
-if (!crafter || !recipeName || resultItemId === null) {
-  return []
-  }
+    if (!crafter || !recipeName || resultItemId === null) {
+      return []
+    }
+
+    const category = masterRecipeBook
+      ? 'master'
+      : isSocietyRecipe || isHousing || isSpecialRecipe
+        ? 'special'
+        : 'level'
+    const specialSection =
+      category !== 'special'
+        ? null
+        : isSocietyRecipe
+          ? 'society'
+          : isHousing
+            ? 'housing'
+            : 'other'
 
     return [
       {
@@ -230,11 +296,10 @@ if (!crafter || !recipeName || resultItemId === null) {
           row.fields.AmountResult > 0
             ? row.fields.AmountResult
             : 1,
-        category: masterRecipeBook
-          ? 'master'
-          : isSpecialRecipe
-            ? 'special'
-            : 'level',
+        notebookOrder:
+          typeof row.fields.Number === 'number' ? row.fields.Number : row.row_id,
+        category,
+        specialSection,
         masterRecipeBook,
       },
     ]
@@ -263,16 +328,31 @@ export async function loadAllRecipes() {
     nextRowId = page.lastRowId
   }
 
-  return allRecipes.sort((firstRecipe, secondRecipe) => {
-    if (firstRecipe.crafter !== secondRecipe.crafter) {
-      return firstRecipe.crafter.localeCompare(secondRecipe.crafter)
-    }
+  return allRecipes.sort(compareRecipesByNotebookOrder)
+}
 
-    return (
-      (firstRecipe.level ?? 0) - (secondRecipe.level ?? 0) ||
-      firstRecipe.name.localeCompare(secondRecipe.name)
-    )
-  })
+/**
+ * Mantiene el orden del Recipe Notebook dentro de cada profesión y categoría.
+ * El campo Number es el índice de presentación del juego; el nombre queda solo
+ * como desempate estable para las pocas recetas que comparten índice.
+ */
+export function compareRecipesByNotebookOrder(
+  firstRecipe: FfxivRecipe,
+  secondRecipe: FfxivRecipe,
+) {
+  if (firstRecipe.crafter !== secondRecipe.crafter) {
+    return firstRecipe.crafter.localeCompare(secondRecipe.crafter)
+  }
+
+  if (firstRecipe.category !== secondRecipe.category) {
+    return firstRecipe.category.localeCompare(secondRecipe.category)
+  }
+
+  return (
+    (firstRecipe.level ?? 0) - (secondRecipe.level ?? 0) ||
+    firstRecipe.notebookOrder - secondRecipe.notebookOrder ||
+    firstRecipe.rowId - secondRecipe.rowId
+  )
 }
 
 export async function loadRecipeIngredients(recipeRowId: number) {
